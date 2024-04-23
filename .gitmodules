@@ -1,0 +1,3 @@
+[submodule "blast-royale-reloaded-contracts/lib/forge-std"]
+	path = blast-royale-reloaded-contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
