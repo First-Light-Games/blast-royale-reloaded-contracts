@@ -20,7 +20,12 @@ contract NoobTokenTest is Test {
     function testMinting() public {
         vm.prank(randomPerson);
         // Attempt to mint tokens with the non-owner account
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "OwnableUnauthorizedAccount(address)",
+                randomPerson
+            )
+        );
         token.mint(deployer, 123);
         uint256 initialBalance = token.balanceOf(deployer);
         uint256 mintAmount = 1000 * 10 ** token.decimals(); // Mint 1000 tokens
@@ -35,19 +40,21 @@ contract NoobTokenTest is Test {
     }
 
     function testMaxSupply() public {
-        uint256 maxSupply = token.maxSupply();
+        uint256 maxSupply = token.cap();
         uint256 currentSupply = token.totalSupply();
         uint256 remainingTokens = maxSupply - currentSupply;
 
         assertTrue(remainingTokens > 0, "No remaining tokens");
 
-        // Try to mint more than remaining tokens
-        uint256 mintAmount = remainingTokens + 1;
+        //attempt minting more than the cap
         vm.prank(owner);
-        try token.mint(deployer, mintAmount) {
-            assertTrue(false, "Minting should fail");
-        } catch Error(string memory) {
-            assertTrue(true, "Minting failed as expected");
-        }
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "ERC20ExceededCap(uint256,uint256)",
+                remainingTokens + 1,
+                maxSupply
+            )
+        );
+        token.mint(deployer, remainingTokens + 1);
     }
 }
