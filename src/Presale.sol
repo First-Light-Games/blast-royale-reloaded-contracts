@@ -48,14 +48,8 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         Purchased[msg.sender] = purchased + amount;
     }
 
-    function _verifyProof(bytes32[] memory proof, address addr, bytes32 root, uint256 amount) private view {   
-        console.logAddress(addr); 
+    function _verifyProof(bytes32[] memory proof, address addr, bytes32 root, uint256 amount) private pure {   
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(addr, amount))));
-        console.logBytes32(leaf);
-        console.logBytes32(proof[0]);
-        console.logBytes32(proof[1]);
-        console.logBytes32(proof[2]);
-        console.logBytes32(proof[3]);
         require(MerkleProof.verify(proof, root, leaf), "Invalid proof");
     }
 

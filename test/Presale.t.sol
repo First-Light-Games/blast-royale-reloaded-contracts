@@ -12,6 +12,7 @@ contract PresaleTest is Test {
     StandardToken public Token;
     StandardToken public USD;
     uint256 MaxTokens = 100000000000000;
+    uint256 AmtToBuy = 666;
     address public UserWallet = address(0x7Ac410F4E36873022b57821D7a8EB3D7513C045a); 
     address public AdminWallet = address(0x2222222222222222222222222222222222222222); 
     bytes32 public MerkleTreeRoot = 0x6545d0ea0dc70d0e6fbecbebf81e3957f455eb24bae7b0a1daea07af8dce774a;
@@ -33,13 +34,12 @@ contract PresaleTest is Test {
         return proofs;
     }
 
-/*
     function test_no_coins() public {
         vm.deal(UserWallet, 0);
         vm.prank(UserWallet);
 
         vm.expectRevert("Not enough COIN to buy");
-        presale.Buy(GetProof(), 155, 155);
+        presale.Buy(GetProof(), AmtToBuy, AmtToBuy);
     }
 
     function test_no_claims() public {
@@ -57,20 +57,20 @@ contract PresaleTest is Test {
         vm.expectRevert("Invalid proof");
         presale.Buy(proof, 10, 10);
     }
-*/
+
     function test_buy_success() public {
-        vm.deal(UserWallet, 500);
+        vm.deal(UserWallet, 1000);
         vm.prank(AdminWallet);
       
-        USD.transfer(UserWallet, 500);
+        USD.transfer(UserWallet, AmtToBuy);
 
         vm.prank(UserWallet);
-        presale.Buy(GetProof(), 155, 155);
+        presale.Buy(GetProof(), AmtToBuy, AmtToBuy);
 
         vm.prank(UserWallet);
-        assertEq(155, presale.AmountPurchased());
+        assertEq(AmtToBuy, presale.AmountPurchased());
     }
-/*
+
      function testFuzz_buyRandom(uint256 buyAmount, uint256 available) public {
         vm.deal(UserWallet, 123123);
 
@@ -82,7 +82,7 @@ contract PresaleTest is Test {
 
         USD.transfer(UserWallet, available);
 
-        if(buyAmount != 155) {
+        if(buyAmount != AmtToBuy) {
             vm.expectRevert("Invalid proof");
         }
         else if(buyAmount > available) {
@@ -92,12 +92,12 @@ contract PresaleTest is Test {
         vm.prank(UserWallet);
         presale.Buy(GetProof(), buyAmount, buyAmount);
 
-        if(buyAmount <= available && buyAmount == 155) {
+        if(buyAmount <= available && buyAmount == AmtToBuy) {
             vm.prank(UserWallet);
             assertEq(buyAmount, presale.AmountPurchased());
         } else {
              assertEq(0, presale.AmountPurchased());
         }
     }
-*/
+
 }
