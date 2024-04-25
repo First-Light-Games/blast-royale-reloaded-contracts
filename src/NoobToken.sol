@@ -11,11 +11,7 @@ contract NoobToken is ERC20, Ownable, ERC20Capped {
 
     constructor(
         address _owner
-    )
-        ERC20("Blast Royale: Noob", "NOOB")
-        ERC20Capped(512000000 * 10 ** 18)
-        Ownable(_owner)
-    {}
+    ) ERC20("NOOB", "NOOB") ERC20Capped(512000000 * 10 ** 18) Ownable(_owner) {}
 
     function mint(address account, uint256 amount) public onlyOwner {
         _mint(account, amount);
