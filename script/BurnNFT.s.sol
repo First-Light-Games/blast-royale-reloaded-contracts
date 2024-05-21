@@ -6,6 +6,7 @@ import "../src/BurnNFT.sol";
 
 contract BurnNFTScript is Script {
     address public nftContractAddress = 0xE560248353Aadf5b8b3703593B2Ac228F660674A;
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);

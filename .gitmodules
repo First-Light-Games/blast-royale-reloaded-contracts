@@ -7,9 +7,3 @@
 [submodule "lib/openzeppelin-contracts-v4"]
 	path = lib/openzeppelin-contracts-v4
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-[submodule "lib/creator-token-contracts"]
-	path = lib/creator-token-contracts
-	url = https://github.com/limitbreakinc/creator-token-contracts
-[submodule "lib/creator-token-standards"]
-	path = lib/creator-token-standards
-	url = https://github.com/limitbreakinc/creator-token-standards

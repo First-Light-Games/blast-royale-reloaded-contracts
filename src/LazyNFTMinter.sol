@@ -7,17 +7,28 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {MockNFT} from "../src/MockNFT.sol";
+import {CorposNFT} from "../src/CorposNFT.sol";
 
 contract LazyNFTMinter is EIP712, AccessControl {
     string private constant SIGNING_DOMAIN = "FLG";
     string private constant SIGNATURE_VERSION = "1";
     uint64 private constant SIGNATURE_TYPE_NFT = 1;
     address public adminAddress;
-    MockNFT public nftContract;
+    CorposNFT public nftContract;
 
-    constructor(address _adminAddress) EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {
+    constructor(
+        address _adminAddress,
+        address _royaltyReceiver,
+        uint96 _royaltyNumerator,
+        string memory _name,
+        string memory _symbol,
+        string memory _baseTokenURI,
+        string memory _suffixURI
+    ) EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {
         adminAddress = _adminAddress;
-        nftContract = new MockNFT();
+        // nftContract = new MockNFT();
+        nftContract =
+            new CorposNFT(_royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI);
     }
 
     /// @notice Represents an un-minted NFT, which has not yet been recorded into the blockchain.
