@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../src/CorposNFT.sol";
+import "../src/creator-tokens-standards/utils/CreatorTokenTransferValidatorV2.sol";
 
 contract CorposNFTTest is Test {
     using Strings for uint256;
@@ -22,9 +23,32 @@ contract CorposNFTTest is Test {
 
     address royaltyReceiver = address(this);
 
+
+    CreatorTokenTransferValidatorV2 public validator;
+
+    address validatorDeployer;
+    address whitelistedOperator;
+
+
+
     function setUp() public {
+      validatorDeployer = vm.addr(1);
+        vm.startPrank(validatorDeployer);
+        validator = new CreatorTokenTransferValidatorV2(validatorDeployer);
+        vm.stopPrank();
+
+        whitelistedOperator = vm.addr(2);
+
+        vm.prank(validatorDeployer);
+        validator.addOperatorToWhitelist(0, whitelistedOperator);
+
+
         tokenMock =
             new CorposNFT(royaltyReceiver, DEFAULT_ROYALTY_FEE_NUMERATOR, "Test", "TEST", baseTokenURI, suffixURI);
+
+
+        tokenMock.setToCustomValidatorAndSecurityPolicy(address(validator), TransferSecurityLevels.Recommended, 0);
+
     }
 
     function _mintToken(address tokenAddress, address to, uint256 tokenId) internal {
@@ -60,10 +84,12 @@ contract CorposNFTTest is Test {
     function testRoyaltyInfoForUnmintedTokenIds(uint256 tokenId, uint256 salePrice) public {
         vm.assume(tokenId < totalSupply);
 
+        vm.assume(salePrice < type(uint256).max / DEFAULT_ROYALTY_FEE_NUMERATOR);
+
         (address recipient, uint256 value) = tokenMock.royaltyInfo(tokenId, salePrice);
         console.log(recipient, value);
-        // assertEq(recipient, royaltyReceiver);
-        // assertEq(value, (salePrice * DEFAULT_ROYALTY_FEE_NUMERATOR) / FEE_DENOMINATOR);
+        assertEq(recipient, royaltyReceiver);
+        assertEq(value, (salePrice * DEFAULT_ROYALTY_FEE_NUMERATOR) / FEE_DENOMINATOR);
     }
 
     function testRoyaltyInfoForMintedTokenIds(uint256 tokenId, uint256 salePrice) public {
@@ -79,6 +105,21 @@ contract CorposNFTTest is Test {
         assertEq(value, (salePrice * DEFAULT_ROYALTY_FEE_NUMERATOR) / FEE_DENOMINATOR);
     }
 
+    function testTransfer(uint256 tokenId, uint256 salePrice) public {
+
+        vm.assume(tokenId < totalSupply);
+
+        address firstOwner = vm.addr(0xA11CE);
+        address secondaryOwner = vm.addr(0xB0B);
+
+        _mintToken(address(tokenMock), firstOwner, tokenId);
+
+        assertEq(tokenMock.ownerOf(tokenId), firstOwner);
+        vm.startPrank(firstOwner);
+        tokenMock.transferFrom(firstOwner, secondaryOwner, tokenId);
+        vm.stopPrank();
+
+    }
     function testRoyaltyInfoForMintedTokenIdsAfterTransfer(uint256 tokenId, uint256 salePrice) public {
         vm.assume(tokenId < totalSupply);
 
