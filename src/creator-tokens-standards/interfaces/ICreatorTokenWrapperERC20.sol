@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+import "./ICreatorToken.sol";
+
+interface ICreatorTokenWrapperERC20 is ICreatorToken {
+    event Staked(address indexed account, uint256 amount);
+    event Unstaked(address indexed account, uint256 amount);
+    event StakerConstraintsSet(StakerConstraints stakerConstraints);
+
+    function stake(uint256 amount) external payable;
+    function stakeTo(uint256 amount, address to) external payable;
+    function unstake(uint256 amount) external payable;
+    function canUnstake(uint256 amount) external view returns (bool);
+    function getStakerConstraints() external view returns (StakerConstraints);
+    function getWrappedCollectionAddress() external view returns (address);
+}
