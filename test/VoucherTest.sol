@@ -5,17 +5,15 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {LazyNFTMinter} from "../src/LazyNFTMinter.sol";
-import {MockNFT} from "../src/MockNFT.sol";
 import {Voucher} from "../src/Voucher.sol";
 
-contract LazyNFTMinterTest is Test {
+contract VoucherTest is Test {
     using ECDSA for bytes32;
 
     string private constant SIGNING_DOMAIN = "FLG";
     string private constant SIGNATURE_VERSION = "1";
 
-    LazyNFTMinter public lazyNFTMinterContract;
-    MockNFT public mockNFT;
+    Voucher public VoucherContract;
 
     address user1 = address(0x1);
     address user2 = address(0x2);
@@ -42,9 +40,7 @@ contract LazyNFTMinterTest is Test {
         nonAdmin = vm.addr(nonAdminPrivateKey);
         admin = vm.addr(adminPrivateKey);
 
-        lazyNFTMinterContract = new LazyNFTMinter(admin);
-
-        mockNFT = lazyNFTMinterContract.nftContract();
+        VoucherContract = new Voucher(admin);
 
         uint256 chainId;
         assembly {
@@ -57,7 +53,7 @@ contract LazyNFTMinterTest is Test {
                 keccak256(bytes(SIGNING_DOMAIN)),
                 keccak256(bytes(SIGNATURE_VERSION)),
                 chainId,
-                address(lazyNFTMinterContract)
+                address(VoucherContract)
             )
         );
     }
@@ -89,7 +85,7 @@ contract LazyNFTMinterTest is Test {
         );
     }
 
-    function testRedeem() public {
+    function testValidSignature() public {
         bytes16 voucherId = bytes16(uint128(1));
         bytes32[] memory data = new bytes32[](3);
         data[0] = bytes32(uint256(0));
@@ -102,7 +98,7 @@ contract LazyNFTMinterTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(adminPrivateKey, digestMessage);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        LazyNFTMinter.NFTVoucher memory voucher = Voucher.NFTVoucher({
+        Voucher.NFTVoucher memory voucher = Voucher.NFTVoucher({
             voucherId: voucherId,
             data: data,
             wallet: wallet,
@@ -110,15 +106,11 @@ contract LazyNFTMinterTest is Test {
             signature: signature
         });
 
-        lazyNFTMinterContract.redeem(voucher);
-
-        assertEq(mockNFT.ownerOf(0), wallet);
-        assertEq(mockNFT.ownerOf(10), wallet);
-        assertEq(mockNFT.ownerOf(99), wallet);
+        assertTrue(VoucherContract.IsValidSignature(voucher));
     }
 
 
-    function testRedeemInvalidSigner() public {
+    function testSignatureInvalid() public {
         bytes16 voucherId = bytes16(uint128(1));
         bytes32[] memory data = new bytes32[](1);
         data[0] = bytes32(uint256(0));
@@ -130,62 +122,51 @@ contract LazyNFTMinterTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(nonAdminPrivateKey, digestMessage);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        LazyNFTMinter.NFTVoucher memory voucher = Voucher.NFTVoucher({
+        Voucher.NFTVoucher memory voucher = Voucher.NFTVoucher({
             voucherId: voucherId,
             data: data,
             wallet: wallet,
             signatureType: signatureType,
             signature: signature
         });
-
-        vm.expectRevert(bytes("Signature invalid or unauthorized"));
-
-        lazyNFTMinterContract.redeem(voucher);
+        assertFalse(VoucherContract.IsValidSignature(voucher));
     }
-    function testRedeemInvalidSignatureType() public {
-        bytes16 voucherId = bytes16(uint128(1));
-        bytes32[] memory data = new bytes32[](1);
-        data[0] = bytes32(uint256(0));
-        address wallet = user2;
-        uint64 signatureType = 2;
 
-        bytes32 digestMessage = getSignMessage(voucherId, data, wallet, signatureType);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(adminPrivateKey, digestMessage);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        LazyNFTMinter.NFTVoucher memory voucher = Voucher.NFTVoucher({
-            voucherId: voucherId,
-            data: data,
-            wallet: wallet,
-            signatureType: signatureType,
-            signature: signature
-        });
-
-        vm.expectRevert(bytes("Incorrect signature type"));
-        lazyNFTMinterContract.redeem(voucher);
+    function getByte(bytes32 data, uint8 index) internal pure returns (uint8) {
+        return uint8(uint256(data) >> (8 * index) & 0xFF);
     }
-     function testFailRedeemAgain() public {
-       bytes16 voucherId = bytes16(uint128(1));
+
+    function testPayloadSerialization() public {
+        
+        uint256[] memory payload = new uint256[](3);
         bytes32[] memory data = new bytes32[](3);
-        data[0] = bytes32(uint256(0));
-        data[1] = bytes32(uint256(10));
-        data[2] = bytes32(uint256(99));
-        address wallet = user2;
-        uint64 signatureType = 1;
 
-        bytes32 digestMessage = getSignMessage(voucherId, data, wallet, signatureType);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(adminPrivateKey, digestMessage);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        payload[0] = 1;
+        payload[1] = 254;
+        payload[2] = 257;
 
-        LazyNFTMinter.NFTVoucher memory voucher = Voucher.NFTVoucher({
-            voucherId: voucherId,
-            data: data,
-            wallet: wallet,
-            signatureType: signatureType,
-            signature: signature
-        });
+        data[0] =  bytes32(payload[0]);
+        data[1] =  bytes32(payload[1]);
+        data[2] =  bytes32(payload[2]);
 
-        lazyNFTMinterContract.redeem(voucher);
-        lazyNFTMinterContract.redeem(voucher);
+        console.logBytes32(data[0]);
+        console.logBytes32(data[1]);
+        console.logBytes32(data[2]);
+
+        assertEq(0x0000000000000000000000000000000000000000000000000000000000000001, data[0]);
+        assertEq(1, getByte(data[0], 0));
+
+        assertEq(0x00000000000000000000000000000000000000000000000000000000000000fe, data[1]);
+        assertEq(254, getByte(data[1], 0));
+
+        assertEq(0x0000000000000000000000000000000000000000000000000000000000000101, data[2]);
+        assertEq(1, getByte(data[2], 0));
+        assertEq(1, getByte(data[2], 1));
+
+        uint256[] memory parsedBack = VoucherContract.ParseUint256(data);
+
+        assertEq(1, parsedBack[0]);
+        assertEq(254, parsedBack[1]);
+        assertEq(257, parsedBack[2]);
     }
 }
