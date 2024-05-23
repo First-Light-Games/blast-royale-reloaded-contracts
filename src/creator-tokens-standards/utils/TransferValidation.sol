@@ -18,7 +18,6 @@ abstract contract TransferValidation is Context {
     function _validateBeforeTransfer(address from, address to, uint256 tokenId) internal virtual {
         bool fromZeroAddress = from == address(0);
         bool toZeroAddress = to == address(0);
-
         if (fromZeroAddress && toZeroAddress) {
             revert ShouldNotMintToBurnAddress();
         } else if (fromZeroAddress) {
