@@ -10,7 +10,7 @@ import {Voucher} from "../src/Voucher.sol";
 import {MockNFT} from "../src/MockNFT.sol";
 import {CorposNFT} from "../src/CorposNFT.sol";
 
-contract LazyNFTMinter is EIP712, AccessControl, Voucher{
+contract LazyNFTMinter is EIP712, AccessControl, Voucher {
     uint64 private constant SIGNATURE_TYPE_NFT = 1;
     CorposNFT public nftContract;
 
@@ -23,8 +23,9 @@ contract LazyNFTMinter is EIP712, AccessControl, Voucher{
         string memory _baseTokenURI,
         string memory _suffixURI
     ) Voucher(_adminAddress) {
-        nftContract =
-            new CorposNFT(_royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI);
+        nftContract = new CorposNFT(
+            _adminAddress, address(this), _royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI
+        );
     }
 
     /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
@@ -32,7 +33,7 @@ contract LazyNFTMinter is EIP712, AccessControl, Voucher{
     function redeem(NFTVoucher calldata voucher) public returns (uint256) {
         require(IsValidSignature(voucher), "Signature invalid or unauthorized");
         require(uint64(voucher.signatureType) == SIGNATURE_TYPE_NFT, "Incorrect signature type");
-        
+
         for (uint256 i = 0; i < voucher.data.length; i++) {
             uint256 tokenId = uint256(voucher.data[i]);
             nftContract.safeMint(voucher.wallet, tokenId);

@@ -20,19 +20,17 @@ contract CorposNFTTest is Test {
 
     address minter1 = vm.addr(0x1);
     address minter2 = vm.addr(0x2);
+    address adminAddress = vm.addr(0xa);
 
     address royaltyReceiver = address(this);
-
 
     CreatorTokenTransferValidatorV2 public validator;
 
     address validatorDeployer;
     address whitelistedOperator;
 
-
-
     function setUp() public {
-      validatorDeployer = vm.addr(1);
+        validatorDeployer = vm.addr(1);
         vm.startPrank(validatorDeployer);
         validator = new CreatorTokenTransferValidatorV2(validatorDeployer);
         vm.stopPrank();
@@ -42,13 +40,18 @@ contract CorposNFTTest is Test {
         vm.prank(validatorDeployer);
         validator.addOperatorToWhitelist(0, whitelistedOperator);
 
-
-        tokenMock =
-            new CorposNFT(royaltyReceiver, DEFAULT_ROYALTY_FEE_NUMERATOR, "Test", "TEST", baseTokenURI, suffixURI);
-
+        tokenMock = new CorposNFT(
+            adminAddress,
+            address(this),
+            royaltyReceiver,
+            DEFAULT_ROYALTY_FEE_NUMERATOR,
+            "Test",
+            "TEST",
+            baseTokenURI,
+            suffixURI
+        );
 
         tokenMock.setToCustomValidatorAndSecurityPolicy(address(validator), TransferSecurityLevels.Recommended, 0);
-
     }
 
     function _mintToken(address tokenAddress, address to, uint256 tokenId) internal {
@@ -76,8 +79,9 @@ contract CorposNFTTest is Test {
 
     function testFailRevertsWhenFeeNumeratorExceedsSalesPrice(uint96 royaltyFeeNumerator) public {
         vm.assume(royaltyFeeNumerator > FEE_DENOMINATOR);
-        CorposNFT badToken =
-            new CorposNFT(royaltyReceiver, royaltyFeeNumerator, "Test", "TEST", baseTokenURI, suffixURI);
+        CorposNFT badToken = new CorposNFT(
+            adminAddress, address(this), royaltyReceiver, royaltyFeeNumerator, "Test", "TEST", baseTokenURI, suffixURI
+        );
         assertEq(address(badToken).code.length, 0);
     }
 
@@ -106,7 +110,6 @@ contract CorposNFTTest is Test {
     }
 
     function testTransfer(uint256 tokenId, uint256 salePrice) public {
-
         vm.assume(tokenId < totalSupply);
 
         address firstOwner = vm.addr(0xA11CE);
@@ -118,8 +121,8 @@ contract CorposNFTTest is Test {
         vm.startPrank(firstOwner);
         tokenMock.transferFrom(firstOwner, secondaryOwner, tokenId);
         vm.stopPrank();
-
     }
+
     function testRoyaltyInfoForMintedTokenIdsAfterTransfer(uint256 tokenId, uint256 salePrice) public {
         vm.assume(tokenId < totalSupply);
 
