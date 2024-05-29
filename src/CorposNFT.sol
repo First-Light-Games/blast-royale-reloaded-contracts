@@ -31,7 +31,6 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
 
     constructor(
         address admin_,
-        address minter_,
         address royaltyReceiver_,
         uint96 royaltyFeeNumerator_,
         string memory name_,
@@ -43,7 +42,7 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
         suffixURI = suffixURI_;
 
         _setupRole(ADMIN_ROLE, admin_);
-        _setupRole(MINTER_ROLE, minter_);
+        _setupRole(ADMIN_ROLE, msg.sender);
     }
 
     function supportsInterface(bytes4 interfaceId)

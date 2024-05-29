@@ -22,6 +22,7 @@ contract CorposNFTAccessControlTest is Test {
 
     address user1 = vm.addr(0x1);
     address adminAddress = vm.addr(0xa);
+    address nonAdminAddress = vm.addr(0xb);
 
     address royaltyReceiver = address(this);
     address minterAddress = address(this);
@@ -30,7 +31,6 @@ contract CorposNFTAccessControlTest is Test {
     function setUp() public {
         tokenMock = new CorposNFT(
             adminAddress,
-            minterAddress,
             royaltyReceiver,
             DEFAULT_ROYALTY_FEE_NUMERATOR,
             "Test",
@@ -38,6 +38,9 @@ contract CorposNFTAccessControlTest is Test {
             baseTokenURI,
             suffixURI
         );
+        
+        vm.prank(adminAddress);
+        tokenMock.setupMinter(address(minterAddress), true);
     }
 
     function testSetBaseURI() public {
@@ -49,6 +52,7 @@ contract CorposNFTAccessControlTest is Test {
     }
 
     function testFailSetBaseURI() public {
+        vm.prank(nonAdminAddress);
         string memory baseTokenURInew = "https://www.test2.com/";
         tokenMock.setBaseURI(baseTokenURInew);
     }
@@ -62,6 +66,7 @@ contract CorposNFTAccessControlTest is Test {
     }
 
     function testFailSetSuffixURI() public {
+        vm.prank(nonAdminAddress);
         string memory setSuffixURInew = ".json2";
         tokenMock.setSuffixURI(setSuffixURInew);
     }

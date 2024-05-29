@@ -17,9 +17,13 @@ contract MyScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        LazyNFTMinter lazyNFTMinterContract = new LazyNFTMinter(
-            adminAddress, _royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI
+        CorposNFT nftContract = new CorposNFT( adminAddress, _royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI);
+
+        LazyNFTMinter lazyNFTMinterContract = new LazyNFTMinter(address(nftContract),
+            adminAddress
         );
+
+        nftContract.setupMinter(address(lazyNFTMinterContract), true);
 
         vm.stopBroadcast();
     }

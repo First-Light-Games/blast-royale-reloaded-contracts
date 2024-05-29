@@ -51,10 +51,15 @@ contract LazyNFTMinterTest is Test {
         nonAdmin = vm.addr(nonAdminPrivateKey);
         admin = vm.addr(adminPrivateKey);
 
-        lazyNFTMinterContract =
-            new LazyNFTMinter(admin, _royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI);
+        mockNFT = new CorposNFT(admin, _royaltyReceiver, _royaltyNumerator, _name, _symbol, _baseTokenURI, _suffixURI);
 
-        mockNFT = lazyNFTMinterContract.nftContract();
+        lazyNFTMinterContract =
+            new LazyNFTMinter(address(mockNFT), admin);
+        
+        vm.startPrank(admin);
+        mockNFT.setupMinter(address(lazyNFTMinterContract), true);
+        vm.stopPrank();
+
 
         uint256 chainId;
         assembly {

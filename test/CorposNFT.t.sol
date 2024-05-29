@@ -42,7 +42,6 @@ contract CorposNFTTest is Test {
 
         tokenMock = new CorposNFT(
             adminAddress,
-            address(this),
             royaltyReceiver,
             DEFAULT_ROYALTY_FEE_NUMERATOR,
             "Test",
@@ -50,6 +49,11 @@ contract CorposNFTTest is Test {
             baseTokenURI,
             suffixURI
         );
+
+
+        vm.prank(adminAddress);
+        tokenMock.setupMinter(address(this), true);
+        vm.stopPrank();
 
         tokenMock.setToCustomValidatorAndSecurityPolicy(address(validator), TransferSecurityLevels.Recommended, 0);
     }
@@ -80,7 +84,7 @@ contract CorposNFTTest is Test {
     function testFailRevertsWhenFeeNumeratorExceedsSalesPrice(uint96 royaltyFeeNumerator) public {
         vm.assume(royaltyFeeNumerator > FEE_DENOMINATOR);
         CorposNFT badToken = new CorposNFT(
-            adminAddress, address(this), royaltyReceiver, royaltyFeeNumerator, "Test", "TEST", baseTokenURI, suffixURI
+            adminAddress, royaltyReceiver, royaltyFeeNumerator, "Test", "TEST", baseTokenURI, suffixURI
         );
         assertEq(address(badToken).code.length, 0);
     }
