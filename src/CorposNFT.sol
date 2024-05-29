@@ -68,6 +68,22 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
         _totalMinted = _totalMinted + 1;
     }
 
+    function bulkSafeMint(address to, bytes32[] memory data) external onlyRole(MINTER_ROLE) {
+        for (uint256 i = 0; i < data.length; i++) {
+            uint256 tokenId = uint256(data[i]);
+
+            if (_totalMinted >= _totalSupply) {
+                revert MaxSupplyReached();
+            }
+            if (tokenId >= _totalSupply) {
+                revert TokenIDExceedsMaxSupply();
+            }
+
+            _safeMint(to, tokenId);
+            _totalMinted = _totalMinted + 1;
+        }
+    }
+
     function _mint(address to, uint256 tokenId) internal virtual override {
         super._mint(to, tokenId);
     }
@@ -93,11 +109,11 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
     }
 
     /// @dev Grants or revokes MINTER_ROLE
-    // function setupMinter(address minter, bool enabled) external onlyRole(ADMIN_ROLE) {
-    //     require(minter != address(0), "!minter");
-    //     if (enabled) _setupRole(MINTER_ROLE, minter);
-    //     else _revokeRole(MINTER_ROLE, minter);
-    // }
+    function setupMinter(address minter, bool enabled) external onlyRole(ADMIN_ROLE) {
+        require(minter != address(0), "!minter");
+        if (enabled) _setupRole(MINTER_ROLE, minter);
+        else _revokeRole(MINTER_ROLE, minter);
+    }
 
     /// @dev Returns true if MINTER
     function isMinter(address minter) external view returns (bool) {

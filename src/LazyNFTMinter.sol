@@ -30,14 +30,12 @@ contract LazyNFTMinter is EIP712, AccessControl, Voucher {
 
     /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
     /// @param voucher A signed NFTVoucher that describes the NFT to be redeemed.
+
     function redeem(NFTVoucher calldata voucher) public returns (uint256) {
         require(IsValidSignature(voucher), "Signature invalid or unauthorized");
         require(uint64(voucher.signatureType) == SIGNATURE_TYPE_NFT, "Incorrect signature type");
 
-        for (uint256 i = 0; i < voucher.data.length; i++) {
-            uint256 tokenId = uint256(voucher.data[i]);
-            nftContract.safeMint(voucher.wallet, tokenId);
-        }
+        nftContract.bulkSafeMint(voucher.wallet, voucher.data);
 
         return voucher.data.length;
     }

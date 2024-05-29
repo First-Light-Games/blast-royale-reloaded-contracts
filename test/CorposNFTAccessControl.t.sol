@@ -25,6 +25,7 @@ contract CorposNFTAccessControlTest is Test {
 
     address royaltyReceiver = address(this);
     address minterAddress = address(this);
+    address newMinterAddress = vm.addr(0x2);
 
     function setUp() public {
         tokenMock = new CorposNFT(
@@ -98,5 +99,21 @@ contract CorposNFTAccessControlTest is Test {
     function testNotIsAdmin() public {
         bool isAdmin = tokenMock.isAdmin(user1);
         assertEq(isAdmin, false);
+    }
+
+    function testRevokeMinter() public {
+        vm.startPrank(adminAddress);
+        tokenMock.setupMinter(minterAddress, false);
+        vm.stopPrank();
+        bool isMinter = tokenMock.isMinter(minterAddress);
+        assertEq(isMinter, false);
+    }
+
+    function testGrantNewMinter() public {
+        vm.startPrank(adminAddress);
+        tokenMock.setupMinter(newMinterAddress, true);
+        vm.stopPrank();
+        bool isMinter = tokenMock.isMinter(newMinterAddress);
+        assertEq(isMinter, true);
     }
 }
