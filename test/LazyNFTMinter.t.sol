@@ -130,6 +130,8 @@ contract LazyNFTMinterTest is Test {
         assertEq(mockNFT.ownerOf(0), wallet);
         assertEq(mockNFT.ownerOf(10), wallet);
         assertEq(mockNFT.ownerOf(99), wallet);
+
+        assertEq(mockNFT.totalSupply(), 3);
     }
 
     function testRedeemInvalidSigner() public {

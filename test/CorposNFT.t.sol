@@ -13,7 +13,7 @@ contract CorposNFTTest is Test {
 
     CorposNFT public tokenMock;
     uint96 public constant DEFAULT_ROYALTY_FEE_NUMERATOR = 1000;
-    uint256 public constant totalSupply = 888;
+    uint256 public constant maxSupply = 888;
 
     string public constant baseTokenURI = "https://www.test.com/";
     string public constant suffixURI = ".json";
@@ -90,7 +90,7 @@ contract CorposNFTTest is Test {
     }
 
     function testRoyaltyInfoForUnmintedTokenIds(uint256 tokenId, uint256 salePrice) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
 
         vm.assume(salePrice < type(uint256).max / DEFAULT_ROYALTY_FEE_NUMERATOR);
 
@@ -101,7 +101,7 @@ contract CorposNFTTest is Test {
     }
 
     function testRoyaltyInfoForMintedTokenIds(uint256 tokenId, uint256 salePrice) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
 
         address minter = vm.addr(0x1);
         vm.assume(salePrice < type(uint256).max / DEFAULT_ROYALTY_FEE_NUMERATOR);
@@ -114,7 +114,7 @@ contract CorposNFTTest is Test {
     }
 
     function testTransfer(uint256 tokenId, uint256 salePrice) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
 
         address firstOwner = vm.addr(0xA11CE);
         address secondaryOwner = vm.addr(0xB0B);
@@ -128,7 +128,7 @@ contract CorposNFTTest is Test {
     }
 
     function testRoyaltyInfoForMintedTokenIdsAfterTransfer(uint256 tokenId, uint256 salePrice) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
 
         address firstOwner = vm.addr(0x199);
         address secondaryOwner = vm.addr(0x2);
@@ -147,7 +147,7 @@ contract CorposNFTTest is Test {
     }
 
     function testRoyaltyInfoForSafeMintedTokenIds(address minter, uint256 tokenId, uint256 salePrice) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
 
         vm.assume(minter != address(0));
         vm.assume(minter.code.length == 0);
@@ -159,17 +159,17 @@ contract CorposNFTTest is Test {
     }
 
     function testTokenURI(uint256 tokenId) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
         _safeMintToken(address(tokenMock), minter1, tokenId);
         assertEq(tokenMock.tokenURI(tokenId), string(abi.encodePacked(baseTokenURI, tokenId.toString(), suffixURI)));
     }
 
     function testFailTokenURI(uint256 tokenId) public {
-        vm.assume(tokenId < totalSupply);
+        vm.assume(tokenId < maxSupply);
         string memory tokenURI = tokenMock.tokenURI(tokenId);
     }
 
-    function testTotalSupply() public {
-        assertEq(tokenMock.totalSupply(), totalSupply);
+    function testMaxSupply() public {
+        assertEq(tokenMock.maxSupply(), maxSupply);
     }
 }

@@ -17,10 +17,9 @@ import "@openzeppelin-v4/contracts/access/AccessControl.sol";
 contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
     using Strings for uint256;
 
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    uint256 private constant _totalSupply = 888;
+    uint256 private constant _maxSupply = 888;
     string public baseTokenURI;
     string public suffixURI;
     uint256 private _totalMinted;
@@ -41,8 +40,10 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
         baseTokenURI = baseTokenURI_;
         suffixURI = suffixURI_;
 
-        _setupRole(ADMIN_ROLE, admin_);
-        _setupRole(ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin_);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+
+        // setToDefaultSecurityPolicy();
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -56,10 +57,10 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
     }
 
     function safeMint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
-        if (_totalMinted >= _totalSupply) {
+        if (_totalMinted >= _maxSupply) {
             revert MaxSupplyReached();
         }
-        if (tokenId >= _totalSupply) {
+        if (tokenId >= _maxSupply) {
             revert TokenIDExceedsMaxSupply();
         }
 
@@ -71,10 +72,10 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
         for (uint256 i = 0; i < data.length; i++) {
             uint256 tokenId = uint256(data[i]);
 
-            if (_totalMinted >= _totalSupply) {
+            if (_totalMinted >= _maxSupply) {
                 revert MaxSupplyReached();
             }
-            if (tokenId >= _totalSupply) {
+            if (tokenId >= _maxSupply) {
                 revert TokenIDExceedsMaxSupply();
             }
 
@@ -88,14 +89,18 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
     }
 
     function totalSupply() public view returns (uint256) {
-        return _totalSupply;
+        return _totalMinted;
     }
 
-    function setBaseURI(string memory baseTokenURI_) public onlyRole(ADMIN_ROLE) {
+    function maxSupply() public view returns (uint256) {
+        return _maxSupply;
+    }
+
+    function setBaseURI(string memory baseTokenURI_) public onlyRole(DEFAULT_ADMIN_ROLE) {
         baseTokenURI = baseTokenURI_;
     }
 
-    function setSuffixURI(string memory suffixURI_) public onlyRole(ADMIN_ROLE) {
+    function setSuffixURI(string memory suffixURI_) public onlyRole(DEFAULT_ADMIN_ROLE) {
         suffixURI = suffixURI_;
     }
 
@@ -108,7 +113,7 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
     }
 
     /// @dev Grants or revokes MINTER_ROLE
-    function setupMinter(address minter, bool enabled) external onlyRole(ADMIN_ROLE) {
+    function setupMinter(address minter, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(minter != address(0), "!minter");
         if (enabled) _setupRole(MINTER_ROLE, minter);
         else _revokeRole(MINTER_ROLE, minter);
@@ -121,6 +126,6 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
 
     /// @dev Returns true if ADMIN
     function isAdmin(address admin) external view returns (bool) {
-        return hasRole(ADMIN_ROLE, admin);
+        return hasRole(DEFAULT_ADMIN_ROLE, admin);
     }
 }

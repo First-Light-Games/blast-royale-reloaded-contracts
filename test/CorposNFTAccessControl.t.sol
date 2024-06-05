@@ -7,15 +7,14 @@ import "../src/CorposNFT.sol";
 
 contract CorposNFTAccessControlTest is Test {
     using Strings for uint256;
-
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant ADMIN_ROLE = 0x00;
+    // bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     uint96 FEE_DENOMINATOR = 10000;
 
     CorposNFT public tokenMock;
     uint96 public constant DEFAULT_ROYALTY_FEE_NUMERATOR = 1000;
-    uint256 public constant totalSupply = 888;
 
     string public constant baseTokenURI = "https://www.test.com/";
     string public constant suffixURI = ".json";
