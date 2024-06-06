@@ -128,4 +128,8 @@ contract CorposNFT is OwnableBasic, ERC721C, BasicRoyalties, AccessControl {
     function isAdmin(address admin) external view returns (bool) {
         return hasRole(DEFAULT_ADMIN_ROLE, admin);
     }
+
+    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external onlyRole(DEFAULT_ADMIN_ROLE){
+        _setDefaultRoyalty(receiver, feeNumerator);
+    }
 }

@@ -9,7 +9,7 @@ import "../src/creator-tokens-standards/utils/CreatorTokenTransferValidatorV2.so
 contract CorposNFTTest is Test {
     using Strings for uint256;
 
-    uint96 FEE_DENOMINATOR = 10000;
+    uint96 public constant FEE_DENOMINATOR = 10000;
 
     CorposNFT public tokenMock;
     uint96 public constant DEFAULT_ROYALTY_FEE_NUMERATOR = 1000;
@@ -171,5 +171,36 @@ contract CorposNFTTest is Test {
 
     function testMaxSupply() public {
         assertEq(tokenMock.maxSupply(), maxSupply);
+    }
+    function testFailRoyaltyInfoUpdate() public {
+        address nonAdminAddress = vm.addr(0xb);
+        address newRoyaltyReceiver = vm.addr(0xc);
+
+        vm.startPrank(nonAdminAddress);
+        tokenMock.setDefaultRoyalty(newRoyaltyReceiver, 2000);
+        vm.stopPrank();
+    }
+    function testRoyaltyInfoUpdate(address minter, uint256 tokenId, uint256 salePrice) public {
+        vm.assume(tokenId < maxSupply);
+        vm.assume(minter != address(0));
+        vm.assume(minter.code.length == 0);
+
+        vm.assume(salePrice < type(uint256).max / DEFAULT_ROYALTY_FEE_NUMERATOR && salePrice > 2000);
+        _safeMintToken(address(tokenMock), minter, tokenId);
+        (address recipient, uint256 value) = tokenMock.royaltyInfo(tokenId, salePrice);
+        assertEq(recipient, royaltyReceiver);
+        assertEq(value, (salePrice * DEFAULT_ROYALTY_FEE_NUMERATOR) / FEE_DENOMINATOR);
+
+        address newRoyaltyReceiver = vm.addr(0xb);
+        uint96 newFeeNumerator = 200;
+
+        vm.startPrank(adminAddress);
+        tokenMock.setDefaultRoyalty(newRoyaltyReceiver, newFeeNumerator);
+        vm.stopPrank();
+
+
+        (address recipient2, uint256 value2) = tokenMock.royaltyInfo(tokenId, salePrice);
+        assertEq(recipient2, newRoyaltyReceiver);
+        assertEq(value2, (salePrice * newFeeNumerator) / FEE_DENOMINATOR);
     }
 }
