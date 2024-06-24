@@ -59,7 +59,7 @@ contract Voucher is EIP712 {
 
     /// Parses Uint256 from byte32s
     function ParseUint256(bytes32[] memory data) public pure returns (uint256[] memory) {
-        uint256[] memory array = new uint256[](data.length);     
+        uint256[] memory array = new uint256[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
             array[i] = uint256(data[i]);
         }
