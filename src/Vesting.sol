@@ -26,17 +26,26 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
     /// <=============== STATE VARIABLES ===============>
 
     /// Blast TOKEN
-    IERC20 public blastToken;
+    IERC20 public noobToken;
 
     struct VestingSchedule {
+        // beneficiary of tokens after they are released
         address beneficiary;
+        // start time of the vesting period
         uint256 start;
+        // cliffStart time in seconds
         uint256 cliffStart;
+        // duration of the vesting period in seconds
         uint256 duration;
+        // the amount that is immediately vested at grant
         uint256 immediateVestedAmount;
+        // total amount of tokens to be released at the end of the vesting EXCLUDING immediateVestedAmount
         uint256 amountTotal;
+        // amount of tokens released
         uint256 released;
+        // whether or not the vesting is revocable
         bool revocable;
+        // whether or not the vesting has been revoked
         bool revoked;
     }
 
@@ -45,8 +54,8 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
     uint256 private vestingSchedulesTotalAmount;
     mapping(address => uint256) private holdersVestingCount;
 
-    constructor(IERC20 _blastToken, address owner) Ownable(owner) {
-        blastToken = _blastToken;
+    constructor(IERC20 _noobToken, address owner) Ownable(owner) {
+        noobToken = _noobToken;
     }
 
     /// <=============== MUTATIVE METHODS ===============>
@@ -145,7 +154,7 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
             vestingSchedule.released;
         vestingSchedulesTotalAmount -= unreleased;
         vestingSchedule.revoked = true;
-        blastToken.safeTransfer(owner(), unreleased);
+        noobToken.safeTransfer(owner(), unreleased);
 
         emit Revoked(vestingScheduleId, block.timestamp);
     }
@@ -170,7 +179,7 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
 
         vestingSchedule.released += amount;
         vestingSchedulesTotalAmount -= amount;
-        blastToken.safeTransfer(beneficiary, amount);
+        noobToken.safeTransfer(beneficiary, amount);
 
         emit Released(_msgSender(), vestingScheduleId, amount, block.timestamp);
     }
@@ -178,8 +187,7 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
     /// <=============== VIEWS ===============>
 
     function getWithdrawableAmount() public view returns (uint256) {
-        return
-            blastToken.balanceOf(address(this)) - vestingSchedulesTotalAmount;
+        return noobToken.balanceOf(address(this)) - vestingSchedulesTotalAmount;
     }
 
     function computeNextVestingScheduleIdForHolder(
@@ -238,12 +246,20 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
         }
     }
 
+    /**
+     * @notice Returns the vesting schedule information for a given identifier.
+     * @return the vesting schedule structure information
+     */
     function getVestingSchedule(
         bytes32 vestingScheduleId
     ) public view returns (VestingSchedule memory) {
         return vestingSchedules[vestingScheduleId];
     }
 
+    /**
+     * @notice Returns the vesting schedule information for a given holder and index.
+     * @return the vesting schedule structure information
+     */
     function getVestingScheduleByAddressAndIndex(
         address holder,
         uint256 index
