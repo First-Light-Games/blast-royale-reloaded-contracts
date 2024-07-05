@@ -231,18 +231,17 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
         } else if (
             currentTime >= vestingSchedule.cliffStart + vestingSchedule.duration
         ) {
-            return
-                vestingSchedule.amountTotal +
-                vestingSchedule.immediateVestedAmount -
-                vestingSchedule.released;
+            uint256 totalVested = vestingSchedule.amountTotal +
+                vestingSchedule.immediateVestedAmount;
+            return totalVested - vestingSchedule.released;
         } else {
             uint256 timeFromStart = currentTime - vestingSchedule.cliffStart;
             uint256 vestedAmount = (vestingSchedule.amountTotal *
                 timeFromStart) / vestingSchedule.duration;
-            vestedAmount +=
-                vestingSchedule.immediateVestedAmount -
-                vestingSchedule.released;
-            return vestedAmount;
+            uint256 totalVested = vestedAmount +
+                vestingSchedule.immediateVestedAmount;
+
+            return totalVested - vestingSchedule.released;
         }
     }
 
