@@ -52,7 +52,7 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
     bytes32[] private vestingSchedulesIds;
     mapping(bytes32 => VestingSchedule) private vestingSchedules;
     uint256 private vestingSchedulesTotalAmount;
-    mapping(address => uint256) private holdersVestingCount;
+    mapping(address => uint256) public holdersVestingCount;
 
     constructor(IERC20 _noobToken, address owner) Ownable(owner) {
         noobToken = _noobToken;
@@ -128,7 +128,10 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
             revoked: false
         });
 
-        vestingSchedulesTotalAmount += _amountTotal + _immediateReleaseAmount;
+        uint256 totalAmount = vestingSchedulesTotalAmount +
+            _amountTotal +
+            _immediateReleaseAmount;
+        vestingSchedulesTotalAmount = totalAmount;
         vestingSchedulesIds.push(vestingScheduleId);
         holdersVestingCount[_beneficiary] += 1;
 
@@ -150,8 +153,9 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
             release(vestingScheduleId, releasableAmount);
         }
 
-        uint256 unreleased = vestingSchedule.amountTotal -
-            vestingSchedule.released;
+        uint256 totalVested = vestingSchedule.amountTotal +
+            vestingSchedule.immediateVestedAmount;
+        uint256 unreleased = totalVested - vestingSchedule.released;
         vestingSchedulesTotalAmount -= unreleased;
         vestingSchedule.revoked = true;
         noobToken.safeTransfer(owner(), unreleased);
@@ -182,6 +186,11 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
         noobToken.safeTransfer(beneficiary, amount);
 
         emit Released(_msgSender(), vestingScheduleId, amount, block.timestamp);
+    }
+
+    function withdraw() public whenPaused nonReentrant onlyOwner {
+        uint256 withdrawAmount = noobToken.balanceOf(address(this));
+        noobToken.safeTransfer(owner(), withdrawAmount);
     }
 
     /// <=============== VIEWS ===============>

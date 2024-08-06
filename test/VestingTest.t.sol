@@ -20,6 +20,7 @@ contract VestingTest is Test {
     address public owner = address(1);
     address public beneficiary1 = address(2);
     address public beneficiary2 = address(3);
+    address public beneficiary3 = address(4);
 
     function setUp() public {
         vm.startPrank(owner);
@@ -30,19 +31,19 @@ contract VestingTest is Test {
         vesting.transferOwnership(owner);
 
         // first vesting schedule
-        address[] memory beneficiaries = new address[](2);
+        address[] memory beneficiaries = new address[](3);
         beneficiaries[0] = beneficiary1;
-        uint256[] memory starts = new uint256[](2);
+        uint256[] memory starts = new uint256[](3);
         starts[0] = block.timestamp + 1 days;
-        uint256[] memory cliffDurations = new uint256[](2);
+        uint256[] memory cliffDurations = new uint256[](3);
         cliffDurations[0] = 1 days;
-        uint256[] memory durations = new uint256[](2);
+        uint256[] memory durations = new uint256[](3);
         durations[0] = 30 days;
-        uint256[] memory immediateReleaseAmounts = new uint256[](2);
+        uint256[] memory immediateReleaseAmounts = new uint256[](3);
         immediateReleaseAmounts[0] = 1_000 * 10 ** 18;
-        uint256[] memory amountTotals = new uint256[](2);
+        uint256[] memory amountTotals = new uint256[](3);
         amountTotals[0] = 10_000 * 10 ** 18;
-        bool[] memory revocables = new bool[](2);
+        bool[] memory revocables = new bool[](3);
         revocables[0] = true;
 
         // second vesting schedule
@@ -53,6 +54,15 @@ contract VestingTest is Test {
         immediateReleaseAmounts[1] = 1_000 * 10 ** 18;
         amountTotals[1] = 10_000 * 10 ** 18;
         revocables[1] = true;
+
+        // second vesting schedule
+        beneficiaries[2] = beneficiary3;
+        starts[2] = block.timestamp + 1 days;
+        cliffDurations[2] = 1 days;
+        durations[2] = 30 days;
+        immediateReleaseAmounts[2] = 1_000 * 10 ** 18;
+        amountTotals[2] = 10_000 * 10 ** 18;
+        revocables[2] = true;
 
         // create the vesting schedules, can bulk create vesting schedules
         vesting.createVestingSchedules(
@@ -196,13 +206,30 @@ contract VestingTest is Test {
             scheduleId
         );
         assertEq(schedule.revoked, true);
+
+        // Revoke the vesting schedule for beneficiary3 after 31 days
+        bytes32 scheduleId1 = vesting
+            .computeVestingScheduleIdForAddressAndIndex(beneficiary3, 0);
+
+        vm.warp(block.timestamp + 31 days);
+        vesting.revoke(scheduleId1);
+
+        Vesting.VestingSchedule memory schedule1 = vesting.getVestingSchedule(
+            scheduleId1
+        );
+        assertEq(schedule1.revoked, true);
         vm.stopPrank();
     }
 
-    function testPauseAndUnpause() public {
+    function testPauseAndWithdraw() public {
         vm.startPrank(owner);
         vesting.pause(true);
         assertEq(vesting.paused(), true);
+        uint256 vestingBalance = token.balanceOf(address(vesting));
+        assertEq(vestingBalance, 512000000000000000000000000);
+        vesting.withdraw();
+        uint256 vestingBalance1 = token.balanceOf(address(vesting));
+        assertEq(vestingBalance1, 0);
 
         vesting.pause(false);
         assertEq(vesting.paused(), false);
