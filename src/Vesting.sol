@@ -25,7 +25,7 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
 
     /// <=============== STATE VARIABLES ===============>
 
-    /// Blast TOKEN
+    /// Noob TOKEN
     IERC20 public noobToken;
 
     struct VestingSchedule {
