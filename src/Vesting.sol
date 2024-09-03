@@ -55,6 +55,8 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
     mapping(address => uint256) public holdersVestingCount;
 
     constructor(IERC20 _noobToken, address owner) Ownable(owner) {
+        require(address(_noobToken) != address(0), "Invalid token address");
+        require(owner != address(0), "Invalid owner address");
         noobToken = _noobToken;
     }
 
@@ -223,7 +225,7 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
             !vestingSchedules[vestingScheduleId].revoked,
             Errors.SCHEDULE_REVOKED
         );
-        VestingSchedule storage vestingSchedule = vestingSchedules[
+        VestingSchedule memory vestingSchedule = vestingSchedules[
             vestingScheduleId
         ];
         return _computeReleasableAmount(vestingSchedule);
@@ -234,9 +236,13 @@ contract Vesting is Ownable, ReentrancyGuard, Pausable {
     ) internal view returns (uint256) {
         uint256 currentTime = block.timestamp;
         if (currentTime < vestingSchedule.cliffStart) {
-            return
-                vestingSchedule.immediateVestedAmount -
-                vestingSchedule.released;
+            if (currentTime >= vestingSchedule.start) {
+                return
+                    vestingSchedule.immediateVestedAmount -
+                    vestingSchedule.released;
+            } else {
+                return 0;
+            }
         } else if (
             currentTime >= vestingSchedule.cliffStart + vestingSchedule.duration
         ) {
