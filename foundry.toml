@@ -5,6 +5,8 @@ libs = ["lib"]
 bytecode_hash = "none"
 cbor_metadata = false
 sparse_mode = false
+optimizer = true
+optimize_runs = 1000000
 
 [profile.default.optimizer_details]
 yul = true
@@ -15,4 +17,4 @@ sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
-
+imx-testnet = { key = "${ETHERSCAN_API_KEY}", url = "https://rpc.testnet.immutable.com", chain = 13473 }
