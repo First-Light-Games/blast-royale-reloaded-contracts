@@ -109,7 +109,6 @@ contract VoucherTest is Test {
         assertTrue(VoucherContract.IsValidSignature(voucher));
     }
 
-
     function testSignatureInvalid() public {
         bytes16 voucherId = bytes16(uint128(1));
         bytes32[] memory data = new bytes32[](1);
@@ -137,7 +136,6 @@ contract VoucherTest is Test {
     }
 
     function testPayloadSerialization() public {
-        
         uint256[] memory payload = new uint256[](3);
         bytes32[] memory data = new bytes32[](3);
 
@@ -145,9 +143,9 @@ contract VoucherTest is Test {
         payload[1] = 254;
         payload[2] = 257;
 
-        data[0] =  bytes32(payload[0]);
-        data[1] =  bytes32(payload[1]);
-        data[2] =  bytes32(payload[2]);
+        data[0] = bytes32(payload[0]);
+        data[1] = bytes32(payload[1]);
+        data[2] = bytes32(payload[2]);
 
         console.logBytes32(data[0]);
         console.logBytes32(data[1]);
