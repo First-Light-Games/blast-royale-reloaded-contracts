@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {LazyERC20Minter} from "../src/LazyERC20Minter.sol";
+import {LazyERC20Distributor} from "../src/LazyERC20Distributor.sol";
 
 import {Voucher} from "../src/Voucher.sol";
 
@@ -17,7 +17,7 @@ contract MockERC20 is ERC20 {
     }
 }
 
-contract LazyERC20MinterTest is Test {
+contract LazyERC20DistributorTest is Test {
     using ECDSA for bytes32;
 
     string private constant SIGNING_DOMAIN = "FLG";
@@ -32,7 +32,7 @@ contract LazyERC20MinterTest is Test {
         "ipfs://bafybeicjjnjeilpv3x5wkshnpa7h4iaqnni67ifudidjxvu4vu2l77xtvq";
     string _suffixURI = ".json";
 
-    LazyERC20Minter public lazyERC20MinterContract;
+    LazyERC20Distributor public lazyERC20DistributorContract;
     MockERC20 public mockERC20;
 
     address user1 = address(0x1);
@@ -69,13 +69,13 @@ contract LazyERC20MinterTest is Test {
         mockERC20 = new MockERC20();
 
         vm.startPrank(admin);
-        lazyERC20MinterContract = new LazyERC20Minter(admin, owner);
+        lazyERC20DistributorContract = new LazyERC20Distributor(admin, owner);
 
-        mockERC20.mint(address(lazyERC20MinterContract), 1000);
+        mockERC20.mint(address(lazyERC20DistributorContract), 1000);
         vm.stopPrank();
 
         vm.prank(owner);
-        lazyERC20MinterContract.whitelistToken(1, address(mockERC20));
+        lazyERC20DistributorContract.whitelistToken(1, address(mockERC20));
 
         uint256 chainId;
         assembly {
@@ -88,7 +88,7 @@ contract LazyERC20MinterTest is Test {
                 keccak256(bytes(SIGNING_DOMAIN)),
                 keccak256(bytes(SIGNATURE_VERSION)),
                 chainId,
-                address(lazyERC20MinterContract)
+                address(lazyERC20DistributorContract)
             )
         );
     }
@@ -149,7 +149,7 @@ contract LazyERC20MinterTest is Test {
         );
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        LazyERC20Minter.NFTVoucher memory voucher = Voucher.NFTVoucher({
+        LazyERC20Distributor.NFTVoucher memory voucher = Voucher.NFTVoucher({
             voucherId: voucherId,
             data: data,
             wallet: wallet,
@@ -157,12 +157,12 @@ contract LazyERC20MinterTest is Test {
             signature: signature
         });
 
-        lazyERC20MinterContract.redeem(voucher);
+        lazyERC20DistributorContract.redeem(voucher);
 
         assertEq(mockERC20.balanceOf(user2), 1000);
 
         vm.expectRevert(bytes("Voucher had been used"));
-        lazyERC20MinterContract.redeem(voucher);
+        lazyERC20DistributorContract.redeem(voucher);
 
         // test not whitelisted token
 
@@ -184,7 +184,7 @@ contract LazyERC20MinterTest is Test {
         );
         bytes memory signature2 = abi.encodePacked(r2, s2, v2);
 
-        LazyERC20Minter.NFTVoucher memory voucher2 = Voucher.NFTVoucher({
+        LazyERC20Distributor.NFTVoucher memory voucher2 = Voucher.NFTVoucher({
             voucherId: voucherId2,
             data: data2,
             wallet: wallet2,
@@ -193,7 +193,7 @@ contract LazyERC20MinterTest is Test {
         });
 
         vm.expectRevert(bytes("Token is not whitelisted"));
-        lazyERC20MinterContract.redeem(voucher2);
+        lazyERC20DistributorContract.redeem(voucher2);
 
         // test insufficient token
         bytes16 voucherId3 = bytes16(uint128(3));
@@ -214,7 +214,7 @@ contract LazyERC20MinterTest is Test {
         );
         bytes memory signature3 = abi.encodePacked(r3, s3, v3);
 
-        LazyERC20Minter.NFTVoucher memory voucher3 = Voucher.NFTVoucher({
+        LazyERC20Distributor.NFTVoucher memory voucher3 = Voucher.NFTVoucher({
             voucherId: voucherId3,
             data: data3,
             wallet: wallet3,
@@ -223,10 +223,10 @@ contract LazyERC20MinterTest is Test {
         });
 
         vm.expectRevert(bytes("Insufficient token balance in contract"));
-        lazyERC20MinterContract.redeem(voucher3);
+        lazyERC20DistributorContract.redeem(voucher3);
 
-        mockERC20.mint(address(lazyERC20MinterContract), 1000);
-        lazyERC20MinterContract.redeem(voucher3);
+        mockERC20.mint(address(lazyERC20DistributorContract), 1000);
+        lazyERC20DistributorContract.redeem(voucher3);
     }
 
     function testRedeemInvalidSigner() public {
@@ -249,7 +249,7 @@ contract LazyERC20MinterTest is Test {
         );
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        LazyERC20Minter.NFTVoucher memory voucher = Voucher.NFTVoucher({
+        LazyERC20Distributor.NFTVoucher memory voucher = Voucher.NFTVoucher({
             voucherId: voucherId,
             data: data,
             wallet: wallet,
@@ -259,23 +259,26 @@ contract LazyERC20MinterTest is Test {
 
         vm.expectRevert(bytes("Signature invalid or unauthorized"));
 
-        lazyERC20MinterContract.redeem(voucher);
+        lazyERC20DistributorContract.redeem(voucher);
 
         // test change signer
         vm.prank(owner);
-        lazyERC20MinterContract.setSignerAddress(nonAdmin);
-        mockERC20.mint(address(lazyERC20MinterContract), 10);
-        lazyERC20MinterContract.redeem(voucher);
+        lazyERC20DistributorContract.setSignerAddress(nonAdmin);
+        mockERC20.mint(address(lazyERC20DistributorContract), 10);
+        lazyERC20DistributorContract.redeem(voucher);
     }
 
     function testWithdraw() public {
-        assertEq(mockERC20.balanceOf(address(lazyERC20MinterContract)), 1000);
+        assertEq(
+            mockERC20.balanceOf(address(lazyERC20DistributorContract)),
+            1000
+        );
         vm.prank(owner);
-        lazyERC20MinterContract.withdrawToken(1);
-        assertEq(mockERC20.balanceOf(address(lazyERC20MinterContract)), 0);
+        lazyERC20DistributorContract.withdrawToken(1);
+        assertEq(mockERC20.balanceOf(address(lazyERC20DistributorContract)), 0);
 
         vm.expectRevert(bytes("TokenId is invalid"));
         vm.prank(owner);
-        lazyERC20MinterContract.withdrawToken(2);
+        lazyERC20DistributorContract.withdrawToken(2);
     }
 }

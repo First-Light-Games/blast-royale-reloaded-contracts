@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Voucher} from "../src/Voucher.sol";
 
-contract LazyERC20Minter is Voucher, Ownable, Pausable, ReentrancyGuard {
+contract LazyERC20Distributor is Voucher, Ownable, Pausable, ReentrancyGuard {
     // Map signatureType/id to ERC20Address
     mapping(uint64 => ERC20) public whitelistedERC20Address;
     mapping(bytes16 => bool) internal idUsed;
