@@ -29,7 +29,6 @@ contract LazyERC20DistributorTest is Test {
     address user1 = address(0x1);
     address user2 = address(0x2);
     address user3 = address(0x3);
-    address deadAddress = address(0x000000000000000000000000000000000000dEaD);
 
     uint256 internal nonAdminPrivateKey;
     uint256 internal adminPrivateKey;
