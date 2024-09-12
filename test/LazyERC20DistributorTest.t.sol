@@ -23,15 +23,6 @@ contract LazyERC20DistributorTest is Test {
     string private constant SIGNING_DOMAIN = "FLG";
     string private constant SIGNATURE_VERSION = "1";
 
-    address private _royaltyReceiver =
-        0x7Ac410F4E36873022b57821D7a8EB3D7513C045a;
-    uint96 private _royaltyNumerator = 100;
-    string _name = "Blast Royale: Corpos";
-    string _symbol = "blast_royale";
-    string _baseTokenURI =
-        "ipfs://bafybeicjjnjeilpv3x5wkshnpa7h4iaqnni67ifudidjxvu4vu2l77xtvq";
-    string _suffixURI = ".json";
-
     LazyERC20Distributor public lazyERC20DistributorContract;
     MockERC20 public mockERC20;
 

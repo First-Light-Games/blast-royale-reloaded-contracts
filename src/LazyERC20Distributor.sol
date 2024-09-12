@@ -15,7 +15,7 @@ import {Voucher} from "../src/Voucher.sol";
 contract LazyERC20Distributor is Voucher, Ownable, Pausable, ReentrancyGuard {
     // Map signatureType/id to ERC20Address
     mapping(uint64 => ERC20) public whitelistedERC20Address;
-    mapping(bytes16 => bool) internal idUsed;
+    mapping(bytes16 => bool) public idUsed;
 
     // Events
     event TokenWhitelisted(uint64 indexed tokenId, address erc20Token);
