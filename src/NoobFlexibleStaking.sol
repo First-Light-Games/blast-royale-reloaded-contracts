@@ -146,11 +146,12 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         if (amount > 0) {
             // Calculate accumulated rewards
             if (aprHistory.length > 1) {
+                uint256 accumulatedRewards = 0;
                 for (uint256 i = 1; i < aprHistory.length; i++) {
-                    uint256 accumulatedRewards = _calculateRewards(amount, aprHistory[i-1].apr, lastClaimedAt, aprHistory[i].timestamp);
+                    accumulatedRewards += _calculateRewards(amount, aprHistory[i-1].apr, lastClaimedAt, aprHistory[i].timestamp);
                     _stake.rewards += accumulatedRewards;
                 }
-                uint256 accumulatedRewards = _calculateRewards(amount, aprHistory[aprHistory.length - 1].apr, lastClaimedAt, block.timestamp);
+                accumulatedRewards += _calculateRewards(amount, aprHistory[aprHistory.length - 1].apr, lastClaimedAt, block.timestamp);
                 _stake.rewards += accumulatedRewards;
             } else {
                 uint256 accumulatedRewards = _calculateRewards(amount, aprHistory[0].apr, lastClaimedAt, block.timestamp);
@@ -180,6 +181,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         return aprHistory[aprHistory.length - 1].apr;
     }
 
+    /// <=============== Admin Functions ===============>
     /// @notice Function to update the global APR
     function updateApr(uint256 _newApr) external onlyOwner {
         require(_newApr > 0, "APR must be greater than 0");
@@ -187,11 +189,6 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
 
         // Emit event
         emit AprUpdated(_newApr);
-    }
-
-    /// @notice Function to get the current APR
-    function getCurrentApr() public view returns (uint256) {
-        return aprHistory[aprHistory.length - 1].apr;
     }
 
     /// @notice Function to pause the contract (for emergency)
