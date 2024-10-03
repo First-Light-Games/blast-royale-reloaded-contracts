@@ -129,9 +129,18 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
     /// @notice Function to get current claimable Rewards
     function getClaimableRewards(address _user) public view returns (uint256) {
         uint256 totalRewards = 0;
-        Stake storage _stake = userStakes[_user];
+        Stake memory _stake = userStakes[_user];
         if (_stake.amount > 0) {
-            totalRewards += _calculateRewards(_stake.amount, _stake.lastApr, _stake.lastClaimedAt, block.timestamp);
+            uint256 accumulatedRewards = 0;
+            uint256 lastAprTimestamp = _stake.lastClaimedAt;
+
+            for (uint256 i = 0; i < aprHistory.length; i++) {
+                uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
+                accumulatedRewards += _calculateRewards(_stake.amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
+                lastAprTimestamp = nextTimestamp;
+            }
+
+            totalRewards += accumulatedRewards;
         }
         return totalRewards;
     }
@@ -144,19 +153,16 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         uint256 lastApr = _stake.lastApr;
 
         if (amount > 0) {
-            // Calculate accumulated rewards
-            if (aprHistory.length > 1) {
-                uint256 accumulatedRewards = 0;
-                for (uint256 i = 1; i < aprHistory.length; i++) {
-                    accumulatedRewards += _calculateRewards(amount, aprHistory[i-1].apr, lastClaimedAt, aprHistory[i].timestamp);
-                    _stake.rewards += accumulatedRewards;
-                }
-                accumulatedRewards += _calculateRewards(amount, aprHistory[aprHistory.length - 1].apr, lastClaimedAt, block.timestamp);
-                _stake.rewards += accumulatedRewards;
-            } else {
-                uint256 accumulatedRewards = _calculateRewards(amount, aprHistory[0].apr, lastClaimedAt, block.timestamp);
-                _stake.rewards += accumulatedRewards;
+            uint256 accumulatedRewards = 0;
+            uint256 lastAprTimestamp = lastClaimedAt;
+
+            for (uint256 i = 0; i < aprHistory.length; i++) {
+                uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
+                accumulatedRewards += _calculateRewards(amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
+                lastAprTimestamp = nextTimestamp;
             }
+
+            _stake.rewards += accumulatedRewards;
         }
 
         // Update last claimed time and APR

@@ -12,6 +12,7 @@ contract NoobFlexibleStakingTest is Test {
     address owner = address(0x1);
     address user = address(0x2);
     uint256 initialApr = 15_000; // 15% APR
+    uint256 stakeAmount = 100 * 1e18;
 
     error OwnableUnauthorizedAccount(address account);
 
@@ -37,8 +38,6 @@ contract NoobFlexibleStakingTest is Test {
 
     // Test staking function
     function testStakeTokens() public {
-        uint256 stakeAmount = 100 * 1e18; // 100 NOOB
-
         vm.startPrank(owner);
         token.mint(user, stakeAmount);
         vm.stopPrank();
@@ -55,16 +54,10 @@ contract NoobFlexibleStakingTest is Test {
 
     // Test claiming rewards
     function testClaimRewards() public {
-        vm.startPrank(owner);
-        uint256 mintAmount = 100 * 10 ** token.decimals(); // Mint 100 tokens
-        token.mint(user, mintAmount);
-        vm.stopPrank();
-
         vm.startPrank(user);
-        token.approve(address(stakingContract), mintAmount);
-        stakingContract.stake(mintAmount);
-        uint256 rewards = stakingContract.getClaimableRewards(user);
-        console.log(rewards);
+        token.approve(address(stakingContract), stakeAmount);
+        stakingContract.stake(stakeAmount);
+        uint256 rewards;
         vm.warp(block.timestamp + 90 days); // 3 months later...
         rewards = stakingContract.getClaimableRewards(user);
         console.log(rewards);
@@ -78,10 +71,28 @@ contract NoobFlexibleStakingTest is Test {
         vm.stopPrank();
     }
 
+    // Test claiming rewards after updating APR
+    function testClaimRewardsAfterUpdatingApr() public {
+        vm.warp(1);
+        vm.startPrank(user);
+        token.approve(address(stakingContract), stakeAmount);
+        stakingContract.stake(stakeAmount);
+        uint256 rewards;
+        vm.warp(1 + 10 days); // 10 days later...
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log(rewards);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        stakingContract.updateApr(5_000); // Update APR to 5%
+        vm.warp(1 + 20 days); // 20 days later...
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log(rewards);
+        vm.stopPrank();
+    }
+
     // Test unstaking tokens
     function testUnstakeTokens() public {
-        uint256 stakeAmount = 100 * 1e18; // 100 NOOB
-
         vm.startPrank(owner);
         token.mint(address(stakingContract), 100000 * 1e18); // mint $NOOB to staking contract for rewards
         vm.stopPrank();

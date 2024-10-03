@@ -21,8 +21,8 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     uint256 public fixedStakingDuration = 90 days;
     uint256 public fixedLockPeriod = 180 days;
     uint256 public gamblingStakingDuration = 30 days;
-    uint256 private safetyNet = 50_000_000 * 1e18; // Hidden value for potential rewards limit
     uint256 public fixedAPR = 80_000;
+    uint256 private safetyNet = 50_000_000 * 1e18; // Hidden value for potential rewards limit
 
     AggregatorV3Interface internal priceFeed;
     IERC20 public noobToken;
@@ -37,7 +37,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         bool isGambling;
     }
 
-    mapping(address => mapping(StakeType => StakingInfo[])) public userStakingInfo;
+    mapping(address => mapping(StakeType => StakingInfo)) public userStakingInfo;
 
     constructor(address _tokenAddress, address _owner, uint256 _tgeStart, address _priceFeed) Ownable(_owner) {
         require(_tokenAddress != address(0), "NoobToken address cannot be 0");
@@ -62,7 +62,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
         noobToken.safeTransferFrom(msg.sender, address(this), _amount);
 
-        userStakingInfo[msg.sender] = StakingInfo({
+        userStakingInfo[msg.sender][StakeType.Fixed] = StakingInfo({
             amount: _amount,
             stakingTime: block.timestamp,
             apr: fixedAPR,
@@ -72,7 +72,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     // Early withdraw with reward forfeiture
     function withdrawFixed() external {
-        StakingInfo memory staker = userStakingInfo[msg.sender];
+        StakingInfo memory staker = userStakingInfo[msg.sender][StakeType.Fixed];
         require(staker.amount > 0, "No stake");
         require(!staker.isGambling, "Invalid staking type");
 
@@ -86,7 +86,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
             noobToken.safeTransfer(msg.sender, staker.amount + rewards);
         }
 
-        delete userStakingInfo[msg.sender]; // Reset staker
+        delete userStakingInfo[msg.sender][StakeType.Fixed]; // Reset staker
     }
 
     // Gambling staking logic with random APR based on time
@@ -99,7 +99,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         require(apr > 0, "Gambling stake is unavailable");
         noobToken.safeTransferFrom(msg.sender, address(this), _amount);
 
-        userStakingInfo[msg.sender] = StakingInfo({
+        userStakingInfo[msg.sender][StakeType.Gambling] = StakingInfo({
             amount: _amount,
             stakingTime: block.timestamp,
             apr: apr,
@@ -115,7 +115,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     // Calculate rewards for gambling staking
     function calculateGamblingRewards(uint256 _amount) internal view returns (uint256) {
-        StakingInfo memory staker = userStakingInfo[msg.sender];
+        StakingInfo memory staker = userStakingInfo[msg.sender][StakeType.Gambling];
         return (_amount * staker.apr * fixedLockPeriod) / (100 * 365 days);
     }
 
