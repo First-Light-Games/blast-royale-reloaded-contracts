@@ -8,44 +8,141 @@ import {NoobFlexibleStaking} from "../src/NoobFlexibleStaking.sol";
 
 contract NoobFlexibleStakingTest is Test {
     NoobToken token;
-    NoobFlexibleStaking staking;
-    address owner;
-    address deployer;
-    address randomPerson;
-    address person1;
-    address stakingOwner;
+    NoobFlexibleStaking stakingContract;
+    address owner = address(0x1);
+    address user = address(0x2);
+    uint256 initialApr = 15_000; // 15% APR
+
+    error OwnableUnauthorizedAccount(address account);
 
     function setUp() public {
-        deployer = address(this);
-        owner = address(0x111); // Set owner address
-        randomPerson = address(0x112); // Set owner address
-        stakingOwner = address(0x113); // Set owner address
-        person1 = address(0x114); // Set owner address
         token = new NoobToken(owner);
-        staking = new NoobFlexibleStaking(address(token), 15_000, stakingOwner);
-    }
+        stakingContract = new NoobFlexibleStaking(address(token), initialApr, owner);
 
-    function testStaking() public {
+        // Label addresses for better logging
+        vm.label(owner, "Owner");
+        vm.label(user, "User");
+
+        // Set the block time to a constant known value & deploy $NOOB
         vm.startPrank(owner);
-        uint256 mintAmount = 100 * 10 ** token.decimals(); // Mint 100 tokens
-        token.mint(person1, mintAmount);
+        uint256 mintAmount = 1_000_000 * 10 ** token.decimals(); // Mint 1_000_000 tokens
+        token.mint(user, mintAmount);
         vm.warp(1680616584);
         vm.stopPrank();
 
-        vm.startPrank(person1);
-        token.approve(address(staking), mintAmount);
-        staking.stake(mintAmount);
-        uint256 rewards = staking.getClaimableRewards(person1);
+        vm.startPrank(user);
+        token.approve(address(stakingContract), mintAmount);
+        vm.stopPrank();
+    }
+
+    // Test staking function
+    function testStakeTokens() public {
+        uint256 stakeAmount = 100 * 1e18; // 100 NOOB
+
+        vm.startPrank(owner);
+        token.mint(user, stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user); // Set the next call to be made by 'user'
+        token.approve(address(stakingContract), stakeAmount);
+        stakingContract.stake(stakeAmount); // Stake 100 NOOB
+        vm.stopPrank();
+
+        // Check the user's staking balance after staking
+        (uint256 stakedAmount, , , ) = stakingContract.userStakes(user);
+        assertEq(stakedAmount, stakeAmount, "Staked amount should match");
+    }
+
+    // Test claiming rewards
+    function testClaimRewards() public {
+        vm.startPrank(owner);
+        uint256 mintAmount = 100 * 10 ** token.decimals(); // Mint 100 tokens
+        token.mint(user, mintAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), mintAmount);
+        stakingContract.stake(mintAmount);
+        uint256 rewards = stakingContract.getClaimableRewards(user);
         console.log(rewards);
-        vm.warp(1680616584 + 90 days); // 3 months later...
-        rewards = staking.getClaimableRewards(person1);
+        vm.warp(block.timestamp + 90 days); // 3 months later...
+        rewards = stakingContract.getClaimableRewards(user);
         console.log(rewards);
         vm.stopPrank();
 
-        vm.startPrank(stakingOwner);
-        staking.updateApr(5_000);
-        vm.warp(1680616584 + 90 days + 30 days); // 4 months later...
-        rewards = staking.getClaimableRewards(person1);
+        vm.startPrank(owner);
+        stakingContract.updateApr(5_000);
+        vm.warp(block.timestamp + 90 days + 30 days); // 4 months later...
+        rewards = stakingContract.getClaimableRewards(user);
         console.log(rewards);
+        vm.stopPrank();
+    }
+
+    // Test unstaking tokens
+    function testUnstakeTokens() public {
+        uint256 stakeAmount = 100 * 1e18; // 100 NOOB
+
+        vm.startPrank(owner);
+        token.mint(address(stakingContract), 100000 * 1e18); // mint $NOOB to staking contract for rewards
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), stakeAmount);
+        stakingContract.stake(stakeAmount); // Stake 100 NOOB
+        vm.stopPrank();
+
+        // Fast forward 1 year to accumulate rewards
+        vm.warp(block.timestamp + 365 days);
+
+        // Unstake tokens
+        vm.startPrank(user);
+        stakingContract.unstake();
+        vm.stopPrank();
+
+        // Check user's balance after unstaking
+        uint256 userBalance = token.balanceOf(user);
+        assertGt(userBalance, 1e18, "User balance should be greater after unstaking");
+    }
+
+    // Test updating APR by the owner
+    function testUpdateApr() public {
+        uint256 newApr = 18_000; // 18%
+
+        vm.startPrank(owner);
+        stakingContract.updateApr(newApr);
+
+        uint256 currentApr = stakingContract.getCurrentApr();
+        assertEq(currentApr, newApr, "APR should be updated to the new value");
+    }
+
+    // Test only owner can update APR
+    function testOnlyOwnerCanUpdateApr() public {
+        uint256 newApr = 20_000; // 20%
+
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user));
+        stakingContract.updateApr(newApr); // This should revert since the caller is not the owner
+    }
+
+    // Test claiming and staking rewards (compound)
+    function testClaimAndStakeRewards() public {
+        uint256 stakeAmount = 100 * 1e18; // 100 NOOB
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), stakeAmount);
+        stakingContract.stake(stakeAmount); // Stake 100 NOOB
+
+        // Fast forward 1 year to accumulate rewards
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 rewardsBefore = stakingContract.getClaimableRewards(user);
+        assertGt(rewardsBefore, 0, "Rewards should be greater than zero");
+
+        // Compound rewards by claiming and staking
+        vm.startPrank(user);
+        stakingContract.claimAndStake();
+
+        (uint256 stakedAmount, , , ) = stakingContract.userStakes(user);
+        assertGt(stakedAmount, stakeAmount, "Staked amount should increase after claiming and staking rewards");
     }
 }
