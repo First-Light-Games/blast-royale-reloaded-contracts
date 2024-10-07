@@ -63,7 +63,8 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         _updateRewards(msg.sender);
 
         // Update user stake
-        userStakes[msg.sender].amount += _amount;
+        userStakes[msg.sender].amount += (_amount + userStakes[msg.sender].rewards);
+        userStakes[msg.sender].rewards = 0;
 
         // Emit event
         emit Staked(msg.sender, _amount);

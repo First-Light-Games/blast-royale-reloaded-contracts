@@ -3,15 +3,15 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {NoobToken} from "../src/NoobToken.sol";
 import {NoobFlexibleStaking} from "../src/NoobFlexibleStaking.sol";
+import {NoobToken} from "../src/NoobToken.sol";
 
 contract NoobFlexibleStakingTest is Test {
     NoobToken token;
     NoobFlexibleStaking stakingContract;
     address owner = address(0x1);
     address user = address(0x2);
-    uint256 initialApr = 15_000; // 15% APR
+    uint256 initialApr = 36500; // 15% APR
     uint256 stakeAmount = 100 * 1e18;
 
     error OwnableUnauthorizedAccount(address account);
@@ -126,6 +126,60 @@ contract NoobFlexibleStakingTest is Test {
         assertEq(currentApr, newApr, "APR should be updated to the new value");
     }
 
+    /*
+        Let's say we have flexible staking, 10% per day.
+        I put 100 tokens in day 1.
+        Then i put 100 tokens on day 2.
+        Then i put 100 tokens on day 3.
+        What's expected to happen is:
+        On day 1 i'd get 10 tokens, so i have 110 tokens staked
+        On day 2 i get 21 tokens, so i have 231 tokens staked
+        On day 3 i get 33 tokens, so i get 364 tokens staked
+    */
+    function testExampleScenario() public {
+        vm.warp(1728319899);
+
+//        vm.startPrank(owner);
+//        stakingContract.updateApr(36500); // 10% per day
+//        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 1 days);
+        console.log('rewards', stakingContract.getClaimableRewards(user));
+        (uint256 amount, , , ) = stakingContract.userStakes(user);
+        console.log('stakeAmount',amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 2 days);
+        console.log('rewards', stakingContract.getClaimableRewards(user));
+        (amount, , , ) = stakingContract.userStakes(user);
+        console.log('stakeAmount',amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 3 days);
+        console.log('rewards', stakingContract.getClaimableRewards(user));
+        (amount, , , ) = stakingContract.userStakes(user);
+        console.log('stakeAmount',amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 4 days);
+        console.log('rewards', stakingContract.getClaimableRewards(user));
+        (amount, , , ) = stakingContract.userStakes(user);
+        console.log('stakeAmount',amount);
+        vm.stopPrank();
+    }
+
     // Test only owner can update APR
     function testOnlyOwnerCanUpdateApr() public {
         uint256 newApr = 20_000; // 20%
@@ -137,8 +191,6 @@ contract NoobFlexibleStakingTest is Test {
 
     // Test claiming and staking rewards (compound)
     function testClaimAndStakeRewards() public {
-        uint256 stakeAmount = 100 * 1e18; // 100 NOOB
-
         vm.startPrank(user);
         token.approve(address(stakingContract), stakeAmount);
         stakingContract.stake(stakeAmount); // Stake 100 NOOB
