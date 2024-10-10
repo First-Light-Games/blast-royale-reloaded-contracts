@@ -64,3 +64,8 @@ $ forge --help
 $ anvil --help
 $ cast --help
 ```
+
+### Deployment (on Sepolia)
+FixedStaking: https://sepolia.etherscan.io/address/0xd585110139c9ae58ac46e25e59d73a38a8371284
+FlexibleStaking: https://sepolia.etherscan.io/address/0x751c12bd2c74f78428c7f06bb02430f9157842f4#code
+Noob: https://sepolia.etherscan.io/address/0x7866fbb00a197d5abab0ab666f045c2caa879ffc
