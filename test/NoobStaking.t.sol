@@ -53,7 +53,7 @@ contract NoobStakingTest is Test {
         vm.stopPrank();
 
         // Check staking data
-        (uint256 stakedAmount, , ) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Fixed);
+        (uint256 stakedAmount, , ) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Fixed, 0);
         assertEq(stakedAmount, stakeAmount, "Staked amount should match");
 
         // Check that the price from the mock is correct
@@ -80,16 +80,21 @@ contract NoobStakingTest is Test {
         stakingContract.stakeFixed(stakeAmount);
 
         // Check staking data
-        (uint256 stakedAmount, , ) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Fixed);
+        (uint256 stakedAmount, , ) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Fixed, 0);
         assertEq(stakedAmount, stakeAmount, "Staked amount should match");
 
         // calculate fixed staking rewards
         vm.warp(initialBlockTimestamp + 1 days);
-        uint256 fixedRewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed);
+        uint256 fixedRewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
         console.log('reward1', fixedRewards);
 
         // Claim rewards
-        stakingContract.withdrawFixed();
+        uint256 balance = token.balanceOf(user);
+        stakingContract.withdrawFixed(0);
+
+        // Check that the balance is correct
+        uint256 newBalance = token.balanceOf(user);
+        assertEq(newBalance, stakeAmount + balance, "There shouldn't be any change in the balance");
         vm.stopPrank();
     }
 

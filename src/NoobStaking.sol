@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -25,7 +23,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     uint256 public fixedLockPeriod = 180 days;
     uint256 public gamblingStakingDuration = 30 days;
     uint256 public fixedAPR = 80_000;
-    uint256 private safetyNet = 50_000_000 * 1e18; // Hidden value for potential rewards limit
 
     bool public gamblingEnabled;
     bool public fixedEnabled;
@@ -48,7 +45,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         require(_tokenAddress != address(0), "NoobToken address cannot be 0");
         require(_owner != address(0), "Invalid owner address");
         require(_priceFeed != address(0), "Invalid price feed address");
-        require(_tgeStart > block.timestamp, "TGE start time cannot be in the past");
+        require(_tgeStart >= block.timestamp, "TGE must be in the future");
 
         priceFeed = AggregatorV3Interface(_priceFeed);
         noobToken = IERC20(_tokenAddress);
@@ -56,11 +53,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
         gamblingEnabled = true;
         fixedEnabled = true;
-    }
-
-    modifier checkSafetyNet(uint256 _amount, uint256 _potentialRewards) {
-        require(getPotentialRewardPool() + _potentialRewards <= safetyNet, "Safety net exceeded");
-        _;
     }
 
     modifier whenGamblingEnabled() {
@@ -168,13 +160,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     function randomInRange(uint256 _min, uint256 _max) internal view returns (uint256) {
         (, int256 price, , , ) = priceFeed.latestRoundData();
         return uint256(price) % (_max - _min + 1) + _min;
-    }
-
-    // Get the total potential reward pool
-    function getPotentialRewardPool() public view returns (uint256) {
-        uint256 totalPotentialRewards = 0;
-        // Logic to sum up potential rewards of all userStakingInfo
-        return totalPotentialRewards;
     }
 
     /// <=============== Admin Functions ===============>
