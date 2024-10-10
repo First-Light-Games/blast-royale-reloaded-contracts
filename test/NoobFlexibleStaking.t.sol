@@ -37,7 +37,7 @@ contract NoobFlexibleStakingTest is Test {
     }
 
     // Test staking function
-    /*function testStakeTokens() public {
+    function testStakeTokens() public {
         vm.startPrank(owner);
         token.mint(user, stakeAmount);
         vm.stopPrank();
@@ -126,16 +126,16 @@ contract NoobFlexibleStakingTest is Test {
         assertEq(currentApr, newApr, "APR should be updated to the new value");
     }
 
-    *//*
-        Let's say we have flexible staking, 10% per day.
-        I put 100 tokens in day 1.
-        Then i put 100 tokens on day 2.
-        Then i put 100 tokens on day 3.
-        What's expected to happen is:
-        On day 1 i'd get 10 tokens, so i have 110 tokens staked
-        On day 2 i get 21 tokens, so i have 231 tokens staked
-        On day 3 i get 33 tokens, so i get 364 tokens staked
-    *//*
+
+    /*Let's say we have flexible staking, 10% per day.
+    I put 100 tokens in day 1.
+    Then i put 100 tokens on day 2.
+    Then i put 100 tokens on day 3.
+    What's expected to happen is:
+    On day 1 i'd get 10 tokens, so i have 110 tokens staked
+    On day 2 i get 21 tokens, so i have 231 tokens staked
+    On day 3 i get 33 tokens, so i get 364 tokens staked*/
+
     function testExampleScenario() public {
         vm.warp(1728319899);
 
@@ -207,7 +207,7 @@ contract NoobFlexibleStakingTest is Test {
 
         (uint256 stakedAmount, , , ) = stakingContract.userStakes(user);
         assertGt(stakedAmount, stakeAmount, "Staked amount should increase after claiming and staking rewards");
-    }*/
+    }
 
     // Test multi-claims with APR change in the middle
     function testMultiClaimsWithAprUpdate() public {
