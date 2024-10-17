@@ -98,11 +98,141 @@ contract NoobStakingTest is Test {
         vm.stopPrank();
     }
 
-    // Test claiming rewards for multiple staking
-    function testClaimRewardsMultiple() public {
+    // Test claiming rewards multiple times to ensure rewards are cumulative
+    function testClaimRewardsMultipleWithAssertions() public {
         vm.startPrank(user);
         vm.warp(initialBlockTimestamp);
+
+        uint256 initialBalance = token.balanceOf(user);
+
+        // Stake tokens
         stakingContract.stakeFixed(stakeAmount);
+
+        // Warp time to simulate 15 days
+        vm.warp(initialBlockTimestamp + 15 days);
+        uint256 rewards1 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
+        assertApproxEqRel(rewards1, (stakeAmount * 80_000 * 15 days) / 365 days / 1_000 / 100, 1e12, "Rewards after 15 days should be correct");
+
+        // Warp time to simulate 180 days
+        vm.warp(initialBlockTimestamp + 180 days);
+        uint256 rewards2 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
+        assertApproxEqRel(rewards2, (stakeAmount * 80_000 * 180 days) / 365 days / 1_000 / 100, 1e12, "Rewards after additional 180 days should be correct");
+
+        // Claim second set of rewards
+        stakingContract.withdrawFixed(0);
+        uint256 balanceAfterClaim = token.balanceOf(user);
+        assertEq(balanceAfterClaim, initialBalance + rewards2, "Balance after second claim should match");
+
+        vm.stopPrank();
+    }
+
+    // Test cumulative rewards calculation
+    function testCumulativeRewards() public {
+        vm.startPrank(user);
+        vm.warp(initialBlockTimestamp);
+
+        // Stake tokens
+        stakingContract.stakeFixed(stakeAmount);
+
+        // Warp time to simulate half of the fixed lock period
+        vm.warp(initialBlockTimestamp + 90 days);
+
+        uint256 claimableRewards1 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
+        uint256 expectedRewards1 = (stakeAmount * 80_000 * 90 days) / 365 days / 1_000 / 100;
+        assertApproxEqRel(claimableRewards1, expectedRewards1, 1e12, "Rewards after 90 days should be correct");
+
+        // Warp time to simulate the full lock period (180 days total)
+        vm.warp(initialBlockTimestamp + 180 days);
+
+        uint256 claimableRewards2 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
+        uint256 expectedRewards2 = (stakeAmount * 80_000 * 180 days) / 365 days / 1_000 / 100;
+        assertApproxEqRel(claimableRewards2, expectedRewards2, 1e12, "Rewards after 180 days should be correct");
+
+        vm.stopPrank();
+    }
+
+    // Test gambling staking functionality early withdraw
+    function testGamblingStakeAndRewards() public {
+        vm.startPrank(user);
+        vm.warp(initialBlockTimestamp);
+
+        // Stake tokens in gambling staking
+        stakingContract.stakeGambling(stakeAmount);
+
+        // Check the staking data
+        (uint256 stakedAmount, ,uint256 apr) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Gambling, 0);
+        assertEq(stakedAmount, stakeAmount, "Staked amount should match");
+        assertGt(apr, 0, "APR should be set based on random selection");
+
+        // Warp time to simulate 10 days of staking
+        vm.warp(initialBlockTimestamp + 10 days);
+        uint256 rewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Gambling, 0);
+        assertGt(rewards, 0, "Rewards should be calculated correctly for gambling staking");
+
+        // Withdraw and claim the rewards
+        uint256 balanceBeforeWithdraw = token.balanceOf(user);
+        stakingContract.withdrawGambling(0);
+        uint256 balanceAfterWithdraw = token.balanceOf(user);
+        assertEq(balanceAfterWithdraw, balanceBeforeWithdraw + stakeAmount, "No rewards due to early withdraw");
+        vm.stopPrank();
+    }
+
+    // Test toggling staking availability
+    function testToggleStaking() public {
+        vm.startPrank(owner);
+        vm.warp(initialBlockTimestamp);
+        // Disable both staking options
+        stakingContract.toggleFixedStaking(false);
+        stakingContract.toggleGamblingStaking(false);
+        vm.stopPrank();
+
+        // Attempt to stake, which should revert
+        vm.startPrank(user);
+        vm.expectRevert("Fixed staking is disabled");
+        stakingContract.stakeFixed(stakeAmount);
+
+        vm.expectRevert("Gambling staking is disabled");
+        stakingContract.stakeGambling(stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        // Re-enable both staking options
+        stakingContract.toggleFixedStaking(true);
+        stakingContract.toggleGamblingStaking(true);
+        vm.stopPrank();
+
+        // Attempt to stake again, which should now succeed
+        vm.startPrank(user);
+        stakingContract.stakeFixed(stakeAmount);
+        stakingContract.stakeGambling(stakeAmount);
+        vm.stopPrank();
+    }
+
+    // Test reaching total rewards limit
+    function testTotalRewardsLimit() public {
+        vm.warp(initialBlockTimestamp);
+
+        // Mint tokens and approve staking contract
+        vm.startPrank(owner);
+        uint256 mintAmount = 105_000_000 * 10 ** token.decimals();
+        token.mint(user, mintAmount); // Mint tokens for the user
+        token.mint(address(stakingContract), 40 * 1_000_000 * 1e18); // Mint tokens for staking rewards
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 105_000_000 * 1e18); // Approve the staking contract
+        // Stake multiple times to reach near the rewards limit
+        for (uint256 i = 0; i < 33; i++) {
+            stakingContract.stakeFixed(3_000_000 * 1e18);
+        }
+
+        // Check that the total rewards approach the limit
+        uint256 totalRewards = stakingContract.totalRewards();
+        assertLt(totalRewards, stakingContract.TOTAL_REWARDS_LIMIT(), "Total rewards should be below the limit");
+
+        // Additional staking should revert once the limit is reached
+        vm.expectRevert("Staking rewards limit reached");
+        stakingContract.stakeFixed(3_000_000 * 1e18);
         vm.stopPrank();
     }
 }
