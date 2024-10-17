@@ -17,10 +17,12 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     event Unstaked(address indexed staker, uint256 amount, StakeType stakeType, uint256 positionId);
 
     /// <=============== STATE VARIABLES ===============>
-    uint256 public constant GAMBLING_MAX_STAKE = 1_000_000 * 1e18;
+    uint256 public constant TOTAL_REWARDS_LIMIT = 40 * 1_000_000 * 1e18;
+    uint256 public totalRewards;
+    uint256 public gamblingMaxStake = 1_000_000 * 1e18;
     uint256 public tgeStart;
     uint256 public fixedStakingDuration = 90 days;
-    uint256 public fixedLockPeriod = 180 days;
+    uint256 public lockPeriod = 180 days;
     uint256 public gamblingStakingDuration = 30 days;
     uint256 public fixedAPR = 80_000;
 
@@ -79,26 +81,30 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         }));
 
         uint256 positionId = userStakingInfo[msg.sender][StakeType.Fixed].length - 1;
+
+        _checkSafetyNet(msg.sender, StakeType.Fixed, positionId);
+
         emit Staked(msg.sender, _amount, StakeType.Fixed, positionId);
     }
 
     // Early withdraw with reward forfeiture
     function withdrawFixed(uint256 positionId) external whenNotPaused nonReentrant {
-        StakingInfo memory staker = userStakingInfo[msg.sender][StakeType.Fixed][positionId];
-        require(staker.amount > 0, "No stake");
+        StakingInfo memory stakingInfo = userStakingInfo[msg.sender][StakeType.Fixed][positionId];
+        require(stakingInfo.amount > 0, "No stake");
 
-        uint256 stakingEndTime = staker.stakingTime + fixedLockPeriod;
+        uint256 stakingEndTime = stakingInfo.stakingTime + lockPeriod;
+        uint256 rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, lockPeriod);
         if (block.timestamp < stakingEndTime) {
             // Early withdraw
-            noobToken.safeTransfer(msg.sender, staker.amount); // No rewards
+            noobToken.safeTransfer(msg.sender, stakingInfo.amount); // No rewards
+            totalRewards -= rewards; // free up rewards that actually didn't get claimed
         } else {
             // Full withdraw with rewards
-            uint256 rewards = calculateRewards(staker.amount, staker.apr, fixedLockPeriod);
-            noobToken.safeTransfer(msg.sender, staker.amount + rewards);
+            noobToken.safeTransfer(msg.sender, stakingInfo.amount + rewards);
         }
 
         _removeStake(msg.sender, StakeType.Fixed, positionId); // Remove the stake
-        emit Unstaked(msg.sender, staker.amount, StakeType.Fixed, positionId);
+        emit Unstaked(msg.sender, stakingInfo.amount, StakeType.Fixed, positionId);
     }
 
     // Gambling staking logic with dynamic APR ranges and time pressure
@@ -106,7 +112,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         require(block.timestamp >= tgeStart, "Staking not started");
         require(block.timestamp <= tgeStart + gamblingStakingDuration, "Gambling staking closed");
         require(_amount > 0, "Stake amount must be greater than 0");
-        require(_amount <= GAMBLING_MAX_STAKE, "Stake exceeds limit");
+        require(_amount <= gamblingMaxStake, "Stake exceeds limit");
 
         uint256 apr = getRandomAPR();
         require(apr > 0, "Gambling stake is unavailable");
@@ -119,7 +125,31 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         }));
 
         uint256 positionId = userStakingInfo[msg.sender][StakeType.Gambling].length - 1;
+
+        _checkSafetyNet(msg.sender, StakeType.Gambling, positionId);
+
         emit Staked(msg.sender, _amount, StakeType.Gambling, positionId);
+    }
+
+    // Withdraw from gambling staking
+    function withdrawGambling(uint256 positionId) external whenNotPaused nonReentrant {
+        StakingInfo memory stakingInfo = userStakingInfo[msg.sender][StakeType.Gambling][positionId];
+        require(stakingInfo.amount > 0, "No stake");
+
+        uint256 stakingEndTime = stakingInfo.stakingTime + lockPeriod;
+        uint256 rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, lockPeriod);
+
+        if (block.timestamp < stakingEndTime) {
+            // Early withdraw
+            noobToken.safeTransfer(msg.sender, stakingInfo.amount); // No rewards
+            totalRewards -= rewards; // free up rewards that actually didn't get claimed
+        } else {
+            // Full withdraw with rewards
+            noobToken.safeTransfer(msg.sender, stakingInfo.amount + rewards);
+        }
+
+        _removeStake(msg.sender, StakeType.Gambling, positionId); // Remove the stake
+        emit Unstaked(msg.sender, stakingInfo.amount, StakeType.Gambling, positionId);
     }
 
     /// <=============== View Functions ===============>
@@ -129,14 +159,14 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         uint256 totalRewards = 0;
         StakingInfo memory stakingInfo = userStakingInfo[_user][_type][positionId];
         if (stakingInfo.amount > 0) {
-            uint256 _duration = stakingInfo.stakingTime + fixedLockPeriod - block.timestamp > 0 ? block.timestamp - stakingInfo.stakingTime : fixedLockPeriod;
+            uint256 _duration = stakingInfo.stakingTime + lockPeriod - block.timestamp > 0 ? block.timestamp - stakingInfo.stakingTime : lockPeriod;
             totalRewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, _duration);
         }
         return totalRewards;
     }
 
     // Calculate rewards
-    function calculateRewards(uint256 _amount, uint256 _apr, uint256 _duration) internal view returns (uint256) {
+    function calculateRewards(uint256 _amount, uint256 _apr, uint256 _duration) internal pure returns (uint256) {
         return (_amount * _apr * _duration) / 365 days / 1_000 / 100; // Simplified calculation
     }
 
@@ -180,6 +210,12 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         gamblingStakingDuration = _duration;
     }
 
+    // Set gamblingMaxStake
+    function setGamblingMaxStake(uint256 _maxStake) external onlyOwner {
+        require(_maxStake > 0, "Max stake must be greater than 0");
+        gamblingMaxStake = _maxStake;
+    }
+
     // Enable/Disable gambling staking
     function toggleGamblingStaking(bool _enabled) external onlyOwner {
         gamblingEnabled = _enabled;
@@ -207,4 +243,13 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         stakes.pop(); // Remove the last element
     }
 
+    function _checkSafetyNet(address _staker, StakeType _stakeType, uint256 _index) internal {
+        StakingInfo memory stakingInfo = userStakingInfo[msg.sender][_stakeType][_index];
+
+        uint256 rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, lockPeriod);
+
+        totalRewards += rewards;
+
+        require(totalRewards < TOTAL_REWARDS_LIMIT, "Staking rewards limit reached");
+    }
 }
