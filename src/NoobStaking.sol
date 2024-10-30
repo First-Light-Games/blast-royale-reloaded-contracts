@@ -177,6 +177,24 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         return totalRewards;
     }
 
+    /// @notice Function to get total claimable Rewards
+    function getTotalClaimableRewards(address _user, StakeType _type) public view returns (uint256) {
+        uint256 totalRewards = 0;
+        for (uint256 i = 0; i < userStakingInfo[_user][_type].length; i++) {
+            totalRewards += getClaimableRewards(_user, _type, i);
+        }
+        return totalRewards;
+    }
+
+    /// @notice Function to get total stakedAmount
+    function getTotalStakedAmount(address _user, StakeType _type) public view returns (uint256) {
+        uint256 totalStakedAmount = 0;
+        for (uint256 i = 0; i < userStakingInfo[_user][_type].length; i++) {
+            totalStakedAmount += userStakingInfo[_user][_type][i].amount;
+        }
+        return totalStakedAmount;
+    }
+
     // Calculate rewards
     function calculateRewards(uint256 _amount, uint256 _apr, uint256 _duration) internal pure returns (uint256) {
         return (_amount * _apr * _duration) / 365 days / 1_000 / 100; // Simplified calculation
