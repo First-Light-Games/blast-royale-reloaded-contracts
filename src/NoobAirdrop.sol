@@ -20,11 +20,11 @@ contract NoobAirdrop is Ownable, Pausable, ReentrancyGuard {
 
     constructor(
         bytes32 _merkleRoot,
-        IERC20 _noobToken,
+        address _noobToken,
         address owner
     ) Ownable(owner) {
         merkleRoot = _merkleRoot;
-        noobToken = _noobToken;
+        noobToken = IERC20(_noobToken);
     }
 
     function claimAirDrop(
