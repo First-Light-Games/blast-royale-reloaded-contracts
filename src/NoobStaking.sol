@@ -17,6 +17,13 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     event Unstaked(address indexed staker, uint256 amount, StakeType stakeType, uint256 positionId);
 
     /// <=============== STATE VARIABLES ===============>
+    struct AprRange {
+        uint256 min;
+        uint256 max;
+    }
+
+    AprRange[] public aprRanges;
+
     uint256 public constant TOTAL_REWARDS_LIMIT = 40 * 1_000_000 * 1e18;
     uint256 public totalRewards;
     uint256 public gamblingMaxStake = 1_000_000 * 1e18;
@@ -55,6 +62,11 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
         gamblingEnabled = true;
         fixedEnabled = true;
+
+        // Initialize default APR ranges
+        aprRanges.push(AprRange(200, 1000));  // First 6 hours
+        aprRanges.push(AprRange(150, 750));   // Next 7 days
+        aprRanges.push(AprRange(100, 500));   // Next 3 weeks
     }
 
     modifier whenGamblingEnabled() {
@@ -165,6 +177,24 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         return totalRewards;
     }
 
+    /// @notice Function to get total claimable Rewards
+    function getTotalClaimableRewards(address _user, StakeType _type) public view returns (uint256) {
+        uint256 totalRewards = 0;
+        for (uint256 i = 0; i < userStakingInfo[_user][_type].length; i++) {
+            totalRewards += getClaimableRewards(_user, _type, i);
+        }
+        return totalRewards;
+    }
+
+    /// @notice Function to get total stakedAmount
+    function getTotalStakedAmount(address _user, StakeType _type) public view returns (uint256) {
+        uint256 totalStakedAmount = 0;
+        for (uint256 i = 0; i < userStakingInfo[_user][_type].length; i++) {
+            totalStakedAmount += userStakingInfo[_user][_type][i].amount;
+        }
+        return totalStakedAmount;
+    }
+
     // Calculate rewards
     function calculateRewards(uint256 _amount, uint256 _apr, uint256 _duration) internal pure returns (uint256) {
         return (_amount * _apr * _duration) / 365 days / 1_000 / 100; // Simplified calculation
@@ -174,15 +204,17 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     function getRandomAPR() internal view returns (uint256) {
         uint256 timeSinceTGE = block.timestamp - tgeStart;
         uint256 apr;
+
         if (timeSinceTGE < 6 hours) {
-            apr = randomInRange(200, 1000);
+            apr = randomInRange(aprRanges[0].min, aprRanges[0].max);
         } else if (timeSinceTGE < 7 days) {
-            apr = randomInRange(150, 750);
+            apr = randomInRange(aprRanges[1].min, aprRanges[1].max);
         } else if (timeSinceTGE < 30 days) {
-            apr = randomInRange(100, 500);
+            apr = randomInRange(aprRanges[2].min, aprRanges[2].max);
         } else {
             apr = 0; // Gambling staking closed
         }
+
         return apr;
     }
 
@@ -224,6 +256,14 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     // Enable/Disable fixed staking
     function toggleFixedStaking(bool _enabled) external onlyOwner {
         fixedEnabled = _enabled;
+    }
+
+    // Set APR ranges
+    function setAPRRange(uint256 _index, uint256 _min, uint256 _max) external onlyOwner {
+        require(_max > _min, "Max must be greater than min");
+        require(_index < aprRanges.length, "Invalid index");
+        aprRanges[_index].min = _min;
+        aprRanges[_index].max = _max;
     }
 
     /// <=============== Internal Helper Functions ===============>

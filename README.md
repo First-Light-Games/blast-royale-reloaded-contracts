@@ -48,7 +48,15 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+source .env
+```
+
+```shell
+forge script ./script/NoobFlexibleStaking.s.sol:NoobFlexibleStakingScript --chain sepolia --rpc-url $SEPOLIA_RPC_URL --broadcast --verify -vvvv
+```
+
+```shell
+forge script ./script/NoobFixedStaking.s.sol:NoobFixedStakingScript --chain sepolia --rpc-url $SEPOLIA_RPC_URL --broadcast --verify -vvvv
 ```
 
 ### Cast
@@ -66,6 +74,6 @@ $ cast --help
 ```
 
 ### Deployment (on Sepolia)
-FixedStaking: https://sepolia.etherscan.io/address/0x7F759B700C7a412760A90c2C93cCF657e3C901c5
-FlexibleStaking: https://sepolia.etherscan.io/address/0x751c12bd2c74f78428c7f06bb02430f9157842f4#code
+FixedStaking: https://sepolia.etherscan.io/address/0x1c68b66261addfe388969eb6c44641dfd995d52f
+FlexibleStaking: https://sepolia.etherscan.io/address/0x4035670e45f04b649f3ae7e4f9fc579261a18d22
 Noob: https://sepolia.etherscan.io/address/0x7866fbb00a197d5abab0ab666f045c2caa879ffc

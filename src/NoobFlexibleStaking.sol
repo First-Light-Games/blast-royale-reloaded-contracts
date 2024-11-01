@@ -34,7 +34,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
 
     // Historical APR changes
     struct AprChange {
-        uint256 apr; // APR value with two decimals, e.g., 15% = 1500
+        uint256 apr; // APR value with two decimals, e.g., 15% = 15000
         uint256 timestamp; // Time when this APR was set
     }
 
@@ -180,7 +180,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
     ) internal view returns (uint256) {
         if (_from >= _to) return 0;
         uint256 duration = _to - _from;
-        return (_amount * _apr * duration) / (365 days * 1000);
+        return (_amount * _apr * duration) / (365 days * 1000) / 100;
     }
 
     /// @notice Function to get the current APR
