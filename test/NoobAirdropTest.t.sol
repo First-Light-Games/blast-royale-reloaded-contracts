@@ -23,7 +23,7 @@ contract NoobAirdropTest is Test {
     }
 
     function testClaimAirDrop() public {
-        assertEq(noobAirdrop.hasClaimed(0), false);
+        assertEq(noobAirdrop.claimed(0), false);
         bytes32[] memory proof = new bytes32[](3);
         proof[
             0
@@ -44,7 +44,7 @@ contract NoobAirdropTest is Test {
         noobAirdrop.claimAirDrop(proof, index, amount);
 
         assertEq(noobToken.balanceOf(alice), 10000000000000000000);
-        assertEq(noobAirdrop.hasClaimed(0), true);
+        assertEq(noobAirdrop.claimed(0), true);
     }
 
     function testVerifyProof() public {

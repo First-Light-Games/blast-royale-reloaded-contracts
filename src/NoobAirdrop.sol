@@ -5,13 +5,18 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract NoobAirdrop is Ownable {
+contract NoobAirdrop is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     bytes32 public merkleRoot;
     mapping(uint256 => bool) public claimed; // Tracks if an airdrop has been claimed by index
     IERC20 public noobToken;
+
+    /// @notice Emit event when airdrop is claimed
+    event AirdropClaimed(address claimer, uint256 index, uint256 amount);
 
     constructor(
         bytes32 _merkleRoot,
@@ -26,7 +31,7 @@ contract NoobAirdrop is Ownable {
         bytes32[] calldata proof,
         uint256 index,
         uint256 amount
-    ) external {
+    ) external whenNotPaused nonReentrant {
         // Check if already claimed
         require(!claimed[index], "Already claimed");
 
@@ -43,6 +48,8 @@ contract NoobAirdrop is Ownable {
 
         // Transfer tokens
         noobToken.safeTransfer(msg.sender, amount);
+
+        emit AirdropClaimed(msg.sender, index, amount);
     }
 
     function verifyProof(
@@ -67,5 +74,13 @@ contract NoobAirdrop is Ownable {
             "Insufficient token balance"
         );
         noobToken.safeTransfer(owner(), amount);
+    }
+
+    function pause(bool stop) external onlyOwner {
+        if (stop) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 }
