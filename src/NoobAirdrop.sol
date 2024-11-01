@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -11,7 +10,7 @@ contract NoobAirdrop is Ownable {
     using SafeERC20 for IERC20;
 
     bytes32 public merkleRoot;
-    BitMaps.BitMap private _airdropList;
+    mapping(uint256 => bool) public claimed; // Tracks if an airdrop has been claimed by index
     IERC20 public noobToken;
 
     constructor(
@@ -28,20 +27,21 @@ contract NoobAirdrop is Ownable {
         uint256 index,
         uint256 amount
     ) external {
-        // check if already claimed
-        require(!hasClaimed(index), "Already claimed");
+        // Check if already claimed
+        require(!claimed[index], "Already claimed");
 
-        // verify proof
-        require(verifyProof(proof, index, amount, msg.sender), "Invalid Prood");
+        // Verify proof
+        require(verifyProof(proof, index, amount, msg.sender), "Invalid Proof");
 
-        // set airdrop as claimed
-        BitMaps.setTo(_airdropList, index, true);
+        // Mark airdrop as claimed
+        claimed[index] = true;
 
         require(
             noobToken.balanceOf(address(this)) >= amount,
             "$NOOB limit reached"
         );
-        // transfer tokens
+
+        // Transfer tokens
         noobToken.safeTransfer(msg.sender, amount);
     }
 
@@ -54,22 +54,18 @@ contract NoobAirdrop is Ownable {
         bytes32 leaf = keccak256(
             bytes.concat(keccak256(abi.encode(addr, index, amount)))
         );
-        if (MerkleProof.verify(proof, merkleRoot, leaf)) {
-            return true;
-        } else {
-            return false;
-        }
+        return MerkleProof.verify(proof, merkleRoot, leaf);
     }
 
     function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
         merkleRoot = _merkleRoot;
     }
 
-    function hasClaimed(uint256 index) public view returns (bool) {
-        if (BitMaps.get(_airdropList, index)) {
-            return true;
-        } else {
-            return false;
-        }
+    function withdrawUnclaimedTokens(uint256 amount) external onlyOwner {
+        require(
+            noobToken.balanceOf(address(this)) >= amount,
+            "Insufficient token balance"
+        );
+        noobToken.safeTransfer(owner(), amount);
     }
 }
