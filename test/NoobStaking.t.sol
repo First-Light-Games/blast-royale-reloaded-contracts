@@ -151,27 +151,27 @@ contract NoobStakingTest is Test {
         vm.stopPrank();
     }
 
-    // Test gambling staking functionality early withdraw
-    function testGamblingStakeAndRewards() public {
+    // Test lucky staking functionality early withdraw
+    function testLuckyStakeAndRewards() public {
         vm.startPrank(user);
         vm.warp(initialBlockTimestamp);
 
-        // Stake tokens in gambling staking
-        stakingContract.stakeGambling(stakeAmount);
+        // Stake tokens in lucky staking
+        stakingContract.stakeLucky(stakeAmount);
 
         // Check the staking data
-        (uint256 stakedAmount, ,uint256 apr) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Gambling, 0);
+        (uint256 stakedAmount, ,uint256 apr) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Lucky, 0);
         assertEq(stakedAmount, stakeAmount, "Staked amount should match");
         assertGt(apr, 0, "APR should be set based on random selection");
 
         // Warp time to simulate 10 days of staking
         vm.warp(initialBlockTimestamp + 10 days);
-        uint256 rewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Gambling, 0);
-        assertGt(rewards, 0, "Rewards should be calculated correctly for gambling staking");
+        uint256 rewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Lucky, 0);
+        assertGt(rewards, 0, "Rewards should be calculated correctly for lucky staking");
 
         // Withdraw and claim the rewards
         uint256 balanceBeforeWithdraw = token.balanceOf(user);
-        stakingContract.withdrawGambling(0);
+        stakingContract.withdrawLucky(0);
         uint256 balanceAfterWithdraw = token.balanceOf(user);
         assertEq(balanceAfterWithdraw, balanceBeforeWithdraw + stakeAmount, "No rewards due to early withdraw");
         vm.stopPrank();
@@ -183,7 +183,7 @@ contract NoobStakingTest is Test {
         vm.warp(initialBlockTimestamp);
         // Disable both staking options
         stakingContract.toggleFixedStaking(false);
-        stakingContract.toggleGamblingStaking(false);
+        stakingContract.toggleLuckyStaking(false);
         vm.stopPrank();
 
         // Attempt to stake, which should revert
@@ -191,20 +191,20 @@ contract NoobStakingTest is Test {
         vm.expectRevert("Fixed staking is disabled");
         stakingContract.stakeFixed(stakeAmount);
 
-        vm.expectRevert("Gambling staking is disabled");
-        stakingContract.stakeGambling(stakeAmount);
+        vm.expectRevert("Lucky staking is disabled");
+        stakingContract.stakeLucky(stakeAmount);
         vm.stopPrank();
 
         vm.startPrank(owner);
         // Re-enable both staking options
         stakingContract.toggleFixedStaking(true);
-        stakingContract.toggleGamblingStaking(true);
+        stakingContract.toggleLuckyStaking(true);
         vm.stopPrank();
 
         // Attempt to stake again, which should now succeed
         vm.startPrank(user);
         stakingContract.stakeFixed(stakeAmount);
-        stakingContract.stakeGambling(stakeAmount);
+        stakingContract.stakeLucky(stakeAmount);
         vm.stopPrank();
     }
 

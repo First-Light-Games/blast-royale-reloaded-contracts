@@ -26,21 +26,21 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     uint256 public constant TOTAL_REWARDS_LIMIT = 40 * 1_000_000 * 1e18;
     uint256 public totalRewards;
-    uint256 public gamblingMaxStake = 1_000_000 * 1e18;
+    uint256 public luckyMaxStake = 1_000_000 * 1e18;
     uint256 public tgeStart;
     uint256 public fixedStakingDuration = 90 days;
     uint256 public lockPeriod = 180 days;
-    uint256 public gamblingStakingDuration = 30 days;
+    uint256 public luckyStakingDuration = 30 days;
     uint256 public fixedAPR = 80_000;
 
-    bool public gamblingEnabled;
+    bool public luckyEnabled;
     bool public fixedEnabled;
 
     AggregatorV3Interface internal priceFeed;
     IERC20 public noobToken;
 
     // Enum for stake types
-    enum StakeType { Fixed, Gambling }
+    enum StakeType { Fixed, Lucky }
 
     struct StakingInfo {
         uint256 amount;
@@ -60,27 +60,27 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         noobToken = IERC20(_tokenAddress);
         tgeStart = _tgeStart;
 
-        gamblingEnabled = true;
+        luckyEnabled = true;
         fixedEnabled = true;
 
         // Initialize default APR ranges
-        aprRanges.push(AprRange(200, 1000));  // First 6 hours
-        aprRanges.push(AprRange(150, 750));   // Next 7 days
-        aprRanges.push(AprRange(100, 500));   // Next 3 weeks
+        aprRanges.push(AprRange(200_000, 1_000_000));  // First 6 hours
+        aprRanges.push(AprRange(150_000, 750_000));   // Next 7 days
+        aprRanges.push(AprRange(100_000, 500_000));   // Next 3 weeks
     }
 
-    modifier whenGamblingEnabled() {
-        require(gamblingEnabled, "Gambling staking is disabled");
+    modifier whenLuckyModeEnabled() {
+        require(luckyEnabled, "Lucky staking is disabled");
         _;
     }
 
-    modifier whenFixedEnabled() {
+    modifier whenFixedModeEnabled() {
         require(fixedEnabled, "Fixed staking is disabled");
         _;
     }
 
     // Fixed staking logic
-    function stakeFixed(uint256 _amount) external whenNotPaused nonReentrant whenFixedEnabled {
+    function stakeFixed(uint256 _amount) external whenNotPaused nonReentrant whenFixedModeEnabled {
         require(block.timestamp >= tgeStart, "Staking not started");
         require(block.timestamp <= tgeStart + fixedStakingDuration, "Fixed staking closed");
 
@@ -119,33 +119,33 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         emit Unstaked(msg.sender, stakingInfo.amount, StakeType.Fixed, positionId);
     }
 
-    // Gambling staking logic with dynamic APR ranges and time pressure
-    function stakeGambling(uint256 _amount) external whenNotPaused nonReentrant whenGamblingEnabled {
+    // Lucky staking logic with dynamic APR ranges and time pressure
+    function stakeLucky(uint256 _amount) external whenNotPaused nonReentrant whenLuckyModeEnabled {
         require(block.timestamp >= tgeStart, "Staking not started");
-        require(block.timestamp <= tgeStart + gamblingStakingDuration, "Gambling staking closed");
+        require(block.timestamp <= tgeStart + luckyStakingDuration, "Lucky staking closed");
         require(_amount > 0, "Stake amount must be greater than 0");
-        require(_amount <= gamblingMaxStake, "Stake exceeds limit");
+        require(_amount <= luckyMaxStake, "Stake exceeds limit");
 
         uint256 apr = getRandomAPR();
-        require(apr > 0, "Gambling stake is unavailable");
+        require(apr > 0, "Lucky stake is unavailable");
         noobToken.safeTransferFrom(msg.sender, address(this), _amount);
 
-        userStakingInfo[msg.sender][StakeType.Gambling].push(StakingInfo({
+        userStakingInfo[msg.sender][StakeType.Lucky].push(StakingInfo({
             amount: _amount,
             stakingTime: block.timestamp,
             apr: apr
         }));
 
-        uint256 positionId = userStakingInfo[msg.sender][StakeType.Gambling].length - 1;
+        uint256 positionId = userStakingInfo[msg.sender][StakeType.Lucky].length - 1;
 
-        _checkSafetyNet(msg.sender, StakeType.Gambling, positionId);
+        _checkSafetyNet(msg.sender, StakeType.Lucky, positionId);
 
-        emit Staked(msg.sender, _amount, StakeType.Gambling, positionId);
+        emit Staked(msg.sender, _amount, StakeType.Lucky, positionId);
     }
 
-    // Withdraw from gambling staking
-    function withdrawGambling(uint256 positionId) external whenNotPaused nonReentrant {
-        StakingInfo memory stakingInfo = userStakingInfo[msg.sender][StakeType.Gambling][positionId];
+    // Withdraw from lucky staking
+    function withdrawLucky(uint256 positionId) external whenNotPaused nonReentrant {
+        StakingInfo memory stakingInfo = userStakingInfo[msg.sender][StakeType.Lucky][positionId];
         require(stakingInfo.amount > 0, "No stake");
 
         uint256 stakingEndTime = stakingInfo.stakingTime + lockPeriod;
@@ -160,8 +160,8 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
             noobToken.safeTransfer(msg.sender, stakingInfo.amount + rewards);
         }
 
-        _removeStake(msg.sender, StakeType.Gambling, positionId); // Remove the stake
-        emit Unstaked(msg.sender, stakingInfo.amount, StakeType.Gambling, positionId);
+        _removeStake(msg.sender, StakeType.Lucky, positionId); // Remove the stake
+        emit Unstaked(msg.sender, stakingInfo.amount, StakeType.Lucky, positionId);
     }
 
     /// <=============== View Functions ===============>
@@ -195,6 +195,11 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         return totalStakedAmount;
     }
 
+    /// @notice Function to get total staked count
+    function getStakedCount(address _user, StakeType _type) public view returns (uint256) {
+        return userStakingInfo[_user][_type].length;
+    }
+
     // Calculate rewards
     function calculateRewards(uint256 _amount, uint256 _apr, uint256 _duration) internal pure returns (uint256) {
         return (_amount * _apr * _duration) / 365 days / 1_000 / 100; // Simplified calculation
@@ -205,14 +210,14 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         uint256 timeSinceTGE = block.timestamp - tgeStart;
         uint256 apr;
 
-        if (timeSinceTGE < 6 hours) {
+        if (timeSinceTGE < 48 hours) {
             apr = randomInRange(aprRanges[0].min, aprRanges[0].max);
-        } else if (timeSinceTGE < 7 days) {
+        } else if (timeSinceTGE < 216 hours) { // Next week after 48 hours
             apr = randomInRange(aprRanges[1].min, aprRanges[1].max);
-        } else if (timeSinceTGE < 30 days) {
+        } else if (timeSinceTGE < 720 hours) { // Next 3 weeks
             apr = randomInRange(aprRanges[2].min, aprRanges[2].max);
         } else {
-            apr = 0; // Gambling staking closed
+            apr = 0; // Lucky staking closed
         }
 
         return apr;
@@ -236,21 +241,21 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         fixedStakingDuration = _duration;
     }
 
-    // Set gamblingStakingDuration
-    function setGamblingStakingDuration(uint256 _duration) external onlyOwner {
+    // Set luckyStakingDuration
+    function setLuckyStakingDuration(uint256 _duration) external onlyOwner {
         require(_duration > 0, "Duration must be greater than 0");
-        gamblingStakingDuration = _duration;
+        luckyStakingDuration = _duration;
     }
 
-    // Set gamblingMaxStake
-    function setGamblingMaxStake(uint256 _maxStake) external onlyOwner {
+    // Set luckyMaxStake
+    function setLuckyMaxStake(uint256 _maxStake) external onlyOwner {
         require(_maxStake > 0, "Max stake must be greater than 0");
-        gamblingMaxStake = _maxStake;
+        luckyMaxStake = _maxStake;
     }
 
-    // Enable/Disable gambling staking
-    function toggleGamblingStaking(bool _enabled) external onlyOwner {
-        gamblingEnabled = _enabled;
+    // Enable/Disable lucky staking
+    function toggleLuckyStaking(bool _enabled) external onlyOwner {
+        luckyEnabled = _enabled;
     }
 
     // Enable/Disable fixed staking
@@ -264,6 +269,15 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         require(_index < aprRanges.length, "Invalid index");
         aprRanges[_index].min = _min;
         aprRanges[_index].max = _max;
+    }
+
+    /// @notice Function to withdraw tokens
+    function withdrawTokens(uint256 amount) external onlyOwner {
+        require(
+            noobToken.balanceOf(address(this)) >= amount,
+            "Insufficient token balance"
+        );
+        noobToken.safeTransfer(owner(), amount);
     }
 
     /// <=============== Internal Helper Functions ===============>
