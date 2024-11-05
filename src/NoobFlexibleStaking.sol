@@ -207,4 +207,13 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
     function unpause() external onlyOwner {
         _unpause();
     }
+
+    /// @notice Function to withdraw tokens
+    function withdrawTokens(uint256 amount) external onlyOwner {
+        require(
+            noobToken.balanceOf(address(this)) >= amount,
+            "Insufficient token balance"
+        );
+        noobToken.safeTransfer(owner(), amount);
+    }
 }
