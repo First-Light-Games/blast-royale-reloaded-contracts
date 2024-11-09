@@ -17,7 +17,7 @@ contract NoobAirdropTest is Test {
         bytes32 merkleRoot = 0xa363ce445148603408e6b99e5f58271a80b194bfce04d7270672f0ac98e086f5;
         vm.startPrank(owner);
         noobToken = new NoobToken(owner);
-        noobAirdrop = new NoobAirdrop(merkleRoot, noobToken, owner);
+        noobAirdrop = new NoobAirdrop(merkleRoot, address(noobToken), owner);
         noobToken.mint(address(noobAirdrop), 512000000000000000000000000);
         vm.stopPrank();
     }

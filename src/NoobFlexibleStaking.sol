@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -24,7 +22,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
     // Struct to hold user's stake details
     struct Stake {
         uint256 amount; // Total staked amount
-        uint256 lastClaimedAt; // Last time rewards were claimed or updated
+        uint256 lastUpdatedAt; // Last time rewards were claimed or updated
         uint256 rewards; // Accumulated rewards
         uint256 lastApr; // Last APR used for reward calculation
     }
@@ -63,8 +61,9 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         _updateRewards(msg.sender);
 
         // Update user stake
-        userStakes[msg.sender].amount += (_amount + userStakes[msg.sender].rewards);
-        userStakes[msg.sender].rewards = 0;
+        userStakes[msg.sender].amount += _amount;
+        // userStakes[msg.sender].amount += (_amount + userStakes[msg.sender].rewards);
+        // userStakes[msg.sender].rewards = 0;
 
         // Emit event
         emit Staked(msg.sender, _amount);
@@ -90,7 +89,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
     /// @notice Function to claim and stake rewards (compound)
     function claimAndStake() external whenNotPaused nonReentrant {
         require(
-            block.timestamp >= userStakes[msg.sender].lastClaimedAt + COOLDOWN_PERIOD,
+            block.timestamp >= userStakes[msg.sender].lastUpdatedAt + COOLDOWN_PERIOD,
             "Claim & Stake can only be done once in 24 hours"
         );
 
@@ -133,29 +132,28 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         Stake memory _stake = userStakes[_user];
         if (_stake.amount > 0) {
             uint256 accumulatedRewards = 0;
-            uint256 lastAprTimestamp = _stake.lastClaimedAt;
+            uint256 lastAprTimestamp = _stake.lastUpdatedAt;
 
             for (uint256 i = 0; i < aprHistory.length; i++) {
                 uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
                 accumulatedRewards += _calculateRewards(_stake.amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
                 lastAprTimestamp = nextTimestamp;
             }
-
-            totalRewards += accumulatedRewards;
+            _stake.rewards += accumulatedRewards;
         }
-        return totalRewards;
+        return _stake.rewards;
     }
 
     /// @notice Function to calculate and update rewards for a user
     function _updateRewards(address _user) internal {
         Stake storage _stake = userStakes[_user];
-        uint256 lastClaimedAt = _stake.lastClaimedAt;
+        uint256 lastUpdatedAt = _stake.lastUpdatedAt;
         uint256 amount = _stake.amount;
         uint256 lastApr = _stake.lastApr;
 
         if (amount > 0) {
             uint256 accumulatedRewards = 0;
-            uint256 lastAprTimestamp = lastClaimedAt;
+            uint256 lastAprTimestamp = lastUpdatedAt;
 
             for (uint256 i = 0; i < aprHistory.length; i++) {
                 uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
@@ -167,7 +165,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         }
 
         // Update last claimed time and APR
-        _stake.lastClaimedAt = block.timestamp;
+        _stake.lastUpdatedAt = block.timestamp;
         _stake.lastApr = getCurrentApr();
     }
 
