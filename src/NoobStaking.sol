@@ -24,7 +24,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     AprRange[] public aprRanges;
 
-    uint256 public constant TOTAL_REWARDS_LIMIT = 40 * 1_000_000 * 1e18;
+    uint256 private totalRewardsLimit;
     uint256 public totalRewards;
     uint256 public luckyMaxStake = 1_000_000 * 1e18;
     uint256 public tgeStart;
@@ -50,7 +50,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     mapping(address => mapping(StakeType => StakingInfo[])) public userStakingInfo;
 
-    constructor(address _tokenAddress, address _owner, uint256 _tgeStart, address _priceFeed) Ownable(_owner) {
+    constructor(address _tokenAddress, address _owner, uint256 _tgeStart, uint256 _totalRewardsLimit, address _priceFeed) Ownable(_owner) {
         require(_tokenAddress != address(0), "NoobToken address cannot be 0");
         require(_owner != address(0), "Invalid owner address");
         require(_priceFeed != address(0), "Invalid price feed address");
@@ -59,6 +59,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         priceFeed = AggregatorV3Interface(_priceFeed);
         noobToken = IERC20(_tokenAddress);
         tgeStart = _tgeStart;
+        totalRewardsLimit = _totalRewardsLimit;
 
         luckyEnabled = true;
         fixedEnabled = true;
@@ -305,6 +306,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
         totalRewards += rewards;
 
-        require(totalRewards < TOTAL_REWARDS_LIMIT, "Staking rewards limit reached");
+        require(totalRewards < totalRewardsLimit, "Staking rewards limit reached");
     }
 }

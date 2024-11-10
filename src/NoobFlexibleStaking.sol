@@ -41,18 +41,22 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
 
     // Minimum cooldown period for Claim & Stake (in seconds)
     uint256 public constant COOLDOWN_PERIOD = 24 hours;
+    uint256 public tgeStart;
 
-    constructor(address _noobToken, uint256 initialApr, address _owner) Ownable(_owner) {
+    constructor(address _noobToken, uint256 initialApr, address _owner, uint256 _tgeStart) Ownable(_owner) {
         require(_noobToken != address(0), "NoobToken address cannot be 0");
         require(initialApr > 0, "Initial APR must be greater than 0");
+        require(_tgeStart >= block.timestamp, "TGE must be in the future");
 
         noobToken = IERC20(_noobToken);
         aprHistory.push(AprChange({apr: initialApr, timestamp: block.timestamp}));
+        tgeStart = _tgeStart;
     }
 
     /// @notice Function to create or add to a flexible stake
     function stake(uint256 _amount) external whenNotPaused nonReentrant {
         require(_amount > 0, "Amount must be greater than 0");
+        require(block.timestamp >= tgeStart, "Staking not started");
 
         // Transfer tokens to the contract
         noobToken.safeTransferFrom(msg.sender, address(this), _amount);
@@ -149,7 +153,6 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         Stake storage _stake = userStakes[_user];
         uint256 lastUpdatedAt = _stake.lastUpdatedAt;
         uint256 amount = _stake.amount;
-        uint256 lastApr = _stake.lastApr;
 
         if (amount > 0) {
             uint256 accumulatedRewards = 0;
