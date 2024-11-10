@@ -150,16 +150,10 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         require(stakingInfo.amount > 0, "No stake");
 
         uint256 stakingEndTime = stakingInfo.stakingTime + lockPeriod;
-        uint256 rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, lockPeriod);
+        require(block.timestamp >= stakingEndTime, "Lucky staking not over");
 
-        if (block.timestamp < stakingEndTime) {
-            // Early withdraw
-            noobToken.safeTransfer(msg.sender, stakingInfo.amount); // No rewards
-            totalRewards -= rewards; // free up rewards that actually didn't get claimed
-        } else {
-            // Full withdraw with rewards
-            noobToken.safeTransfer(msg.sender, stakingInfo.amount + rewards);
-        }
+        uint256 rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, lockPeriod);
+        noobToken.safeTransfer(msg.sender, stakingInfo.amount + rewards);
 
         _removeStake(msg.sender, StakeType.Lucky, positionId); // Remove the stake
         emit Unstaked(msg.sender, stakingInfo.amount, StakeType.Lucky, positionId);
@@ -203,7 +197,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     // Calculate rewards
     function calculateRewards(uint256 _amount, uint256 _apr, uint256 _duration) internal pure returns (uint256) {
-        return (_amount * _apr * _duration) / 365 days / 1_000 / 100; // Simplified calculation
+        return (_amount * _apr * _duration) / 365 days / 1_000 / 100;
     }
 
     // Get a random APR based on the stage after TGE
@@ -224,7 +218,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         return apr;
     }
 
-    // Helper function to get a random number in range (simplified for demonstration)
+    // Helper function to get a random number in range
     function randomInRange(uint256 _min, uint256 _max) internal view returns (uint256) {
         (, int256 price, , , ) = priceFeed.latestRoundData();
         return uint256(price) % (_max - _min + 1) + _min;
@@ -234,6 +228,13 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     // Set APR for fixed staking
     function setFixedAPR(uint256 _apr) external onlyOwner {
         fixedAPR = _apr;
+    }
+
+    // Set tgeStart time
+    function setTgeStart(uint256 _tgeStart) external onlyOwner {
+        require(tgeStart <= block.timestamp, "TGE already started");
+        require(_tgeStart >= block.timestamp, "New TGE must be in the future");
+        tgeStart = _tgeStart;
     }
 
     // Set fixedStakingDuration
