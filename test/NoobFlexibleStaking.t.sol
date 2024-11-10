@@ -11,7 +11,7 @@ contract NoobFlexibleStakingTest is Test {
     NoobFlexibleStaking stakingContract;
     address owner = address(0x1);
     address user = address(0x2);
-    uint256 initialApr = 15_000; // 15% APR
+    uint256 initialApr = 36_500; // 15% APR
     uint256 stakeAmount = 100 * 1e18;
     uint256 tgeStart = 1680616584;
 
@@ -39,6 +39,137 @@ contract NoobFlexibleStakingTest is Test {
 
         vm.startPrank(user);
         token.approve(address(stakingContract), mintAmount);
+        vm.stopPrank();
+    }
+
+    function testExampleScenarioMultiple() public {
+        vm.warp(1680616584);
+
+        vm.startPrank(owner);
+        token.mint(user, 100000000 ether);
+        token.mint(address(stakingContract), 100000000 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+
+        // Initial staking of 100 NOOB tokens
+        uint256 amount = 100 ether;
+        token.approve(address(stakingContract), 100000000000000 ether);
+        stakingContract.stake(amount);
+
+        // Forward time by 1 day and add more stakes each day, testing APR changes and further actions
+        for (uint256 day = 1; day <= 10; day++) {
+            vm.warp(1680616584 + day * 24 hours);
+            uint256 rewards = stakingContract.getClaimableRewards(user);
+            console.log("Day", day, "Rewards:", rewards);
+
+            vm.startPrank(owner);
+            // Simulate APR change by the admin
+            if (day == 3) {
+                stakingContract.updateApr(25_000);  // Increase APR to 25%
+            } else if (day == 5) {
+                stakingContract.updateApr(5_000);   // Decrease APR back to 5%
+            }
+            vm.stopPrank();
+
+            vm.startPrank(user);
+
+            // Optionally, add unstaking and restaking to simulate user actions
+            if (day == 2) {
+                stakingContract.unstake();  // Unstake part of the stake on day 2
+                stakingContract.stake(100 ether);   // Stake again with 100 NOOB
+            }
+        }
+
+        vm.stopPrank();
+    }
+
+    function testClaimAndStake() public {
+        vm.warp(1680616584);
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.stopPrank();
+
+        vm.warp(1680616584 + 5 days);
+        uint256 rewards = stakingContract.getClaimableRewards(user);
+        console.log("Day 5 Rewards:", rewards);
+
+        vm.startPrank(user);
+        stakingContract.claimAndStake();
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log("Rewards after claimAndStake:", rewards);
+        (uint256 amount, , , ) = stakingContract.userStakes(user);
+        console.log("Staked Amount", amount);
+
+        vm.warp(1680616584 + 6 days);
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log("Day 6 Rewards:", rewards);
+        vm.stopPrank();
+    }
+
+    function testUnstakeAndStake() public {
+        vm.warp(1680616584);
+
+        vm.startPrank(owner);
+        token.mint(user, 100000000 ether);
+        token.mint(address(stakingContract), 100000000 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.stopPrank();
+
+        vm.warp(1680616584 + 5 days);
+        uint256 rewards = stakingContract.getClaimableRewards(user);
+        console.log("Day 5 Rewards:", rewards);
+
+        vm.startPrank(user);
+        stakingContract.unstake();
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log("Rewards after unstakeAndStake:", rewards);
+        (uint256 amount, , , ) = stakingContract.userStakes(user);
+        console.log("Staked Amount", amount);
+
+        vm.warp(1680616584 + 6 days);
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log("Day 6 Rewards:", rewards);
+        vm.stopPrank();
+    }
+
+    function testStakeAndChangeAprAndclaimAndStake() public {
+        vm.warp(1680616584);
+
+        vm.startPrank(owner);
+        token.mint(user, 100000000 ether);
+        token.mint(address(stakingContract), 100000000 ether);
+        vm.stopPrank();
+
+        // stake
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.stopPrank();
+
+        // 5 days pass
+        vm.warp(1680616584 + 5 days);
+
+        // Update APR to 3.65% from 36.5%
+        vm.startPrank(owner);
+        stakingContract.updateApr(3650);  // Decrease APR to 3.65%
+        vm.stopPrank();
+
+        // 10 days pass
+        vm.warp(1680616584 + 10 days);
+
+        vm.startPrank(user);
+        uint256 rewards = stakingContract.getClaimableRewards(user);
+        console.log("Rewards after decreasing apr:", rewards);
+        stakingContract.claimAndStake();
+        (uint256 amount, , uint256 stakingRewards, ) = stakingContract.userStakes(user);
+        console.log("Staked Amount", amount);
+        console.log("Rewards after claimAndStake:", stakingRewards);
         vm.stopPrank();
     }
 
