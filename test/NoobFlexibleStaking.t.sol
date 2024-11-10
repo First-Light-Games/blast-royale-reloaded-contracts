@@ -11,8 +11,9 @@ contract NoobFlexibleStakingTest is Test {
     NoobFlexibleStaking stakingContract;
     address owner = address(0x1);
     address user = address(0x2);
-    uint256 initialApr = 36500; // 15% APR
+    uint256 initialApr = 15_000; // 15% APR
     uint256 stakeAmount = 100 * 1e18;
+    uint256 tgeStart = 1680616584;
 
     error OwnableUnauthorizedAccount(address account);
 
@@ -21,7 +22,8 @@ contract NoobFlexibleStakingTest is Test {
         stakingContract = new NoobFlexibleStaking(
             address(token),
             initialApr,
-            owner
+            owner,
+            tgeStart
         );
 
         // Label addresses for better logging
@@ -37,6 +39,53 @@ contract NoobFlexibleStakingTest is Test {
 
         vm.startPrank(user);
         token.approve(address(stakingContract), mintAmount);
+        vm.stopPrank();
+    }
+
+    function testExampleScenario1() public {
+        vm.warp(1728319899);
+
+        //        vm.startPrank(owner);
+        //        stakingContract.updateApr(36500); // 10% per day
+        //        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 1 days);
+        console.log("rewards", stakingContract.getClaimableRewards(user));
+        (uint256 amount, , , ) = stakingContract.userStakes(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        vm.warp(1728319899 + 1 days);
+        token.approve(address(stakingContract), 100 * 1e18);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 2 days);
+        console.log("rewards", stakingContract.getClaimableRewards(user));
+        (amount, , , ) = stakingContract.userStakes(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        vm.warp(1728319899 + 2 days);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 3 days);
+        console.log("rewards", stakingContract.getClaimableRewards(user));
+        (amount, , , ) = stakingContract.userStakes(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 * 1e18);
+        vm.warp(1728319899 + 3 days);
+        stakingContract.stake(100 * 1e18);
+        vm.warp(1728319899 + 4 days);
+        console.log("rewards", stakingContract.getClaimableRewards(user));
+        (amount, , , ) = stakingContract.userStakes(user);
+        console.log("stakeAmount", amount);
         vm.stopPrank();
     }
 

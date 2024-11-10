@@ -15,6 +15,7 @@ contract NoobStakingTest is Test {
     uint256 initialApr = 36500; // 10% APR daily equivalent for testing
     uint256 stakeAmount = 100 * 1e18;
     uint256 initialBlockTimestamp = 1728461199;
+    uint256 rewardLimit = 40 * 1_000_000 * 1e18;
 
     error OwnableUnauthorizedAccount(address account);
 
@@ -28,7 +29,7 @@ contract NoobStakingTest is Test {
         mockPriceFeed = new MockV3Aggregator(1000 * 1e8);
 
         // Initialize staking contract with mock price feed
-        stakingContract = new NoobStaking(address(token), owner, initialBlockTimestamp, address(mockPriceFeed));
+        stakingContract = new NoobStaking(address(token), owner, initialBlockTimestamp, rewardLimit, address(mockPriceFeed));
 
         // Mint tokens and approve staking contract
         vm.startPrank(owner);
@@ -228,7 +229,7 @@ contract NoobStakingTest is Test {
 
         // Check that the total rewards approach the limit
         uint256 totalRewards = stakingContract.totalRewards();
-        assertLt(totalRewards, stakingContract.TOTAL_REWARDS_LIMIT(), "Total rewards should be below the limit");
+        assertLt(totalRewards, rewardLimit, "Total rewards should be below the limit");
 
         // Additional staking should revert once the limit is reached
         vm.expectRevert("Staking rewards limit reached");
