@@ -167,9 +167,10 @@ contract NoobFlexibleStakingTest is Test {
         uint256 rewards = stakingContract.getClaimableRewards(user);
         console.log("Rewards after decreasing apr:", rewards);
         stakingContract.claimAndStake();
-        (uint256 amount, , uint256 stakingRewards, ) = stakingContract.userStakes(user);
+        (uint256 amount, , , ) = stakingContract.userStakes(user);
         console.log("Staked Amount", amount);
-        console.log("Rewards after claimAndStake:", stakingRewards);
+        rewards = stakingContract.getClaimableRewards(user);
+        console.log("Rewards after claimAndStake:", rewards);
         vm.stopPrank();
     }
 

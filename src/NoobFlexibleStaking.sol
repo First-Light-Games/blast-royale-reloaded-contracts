@@ -104,6 +104,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
 
         // Reset rewards
         userStakes[msg.sender].rewards = 0;
+        userStakes[msg.sender].lastUpdatedAt = block.timestamp;
 
         // Add rewards to stake
         userStakes[msg.sender].amount += rewards;
@@ -141,27 +142,30 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
             for (uint256 i = 0; i < aprHistory.length; i++) {
                 uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
                 accumulatedRewards += _calculateRewards(_stake.amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
-                lastAprTimestamp = nextTimestamp;
+                if (_stake.lastUpdatedAt < nextTimestamp) {
+                    lastAprTimestamp = nextTimestamp;
+                }
             }
-            _stake.rewards += accumulatedRewards;
+            totalRewards += accumulatedRewards;
         }
-        return _stake.rewards;
+        return totalRewards;
     }
 
     /// @notice Function to calculate and update rewards for a user
     function _updateRewards(address _user) internal {
         Stake storage _stake = userStakes[_user];
-        uint256 lastUpdatedAt = _stake.lastUpdatedAt;
         uint256 amount = _stake.amount;
 
         if (amount > 0) {
             uint256 accumulatedRewards = 0;
-            uint256 lastAprTimestamp = lastUpdatedAt;
+            uint256 lastAprTimestamp = _stake.lastUpdatedAt;
 
             for (uint256 i = 0; i < aprHistory.length; i++) {
                 uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
                 accumulatedRewards += _calculateRewards(amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
-                lastAprTimestamp = nextTimestamp;
+                if (_stake.lastUpdatedAt < nextTimestamp) {
+                    lastAprTimestamp = nextTimestamp;
+                }
             }
 
             _stake.rewards += accumulatedRewards;
