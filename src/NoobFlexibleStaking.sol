@@ -124,7 +124,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
 
     /// @notice Function to unstake all staked tokens and claim rewards
     function unstake(uint256 positionId) external whenNotPaused nonReentrant {
-        require(positionId < userStakes[msg.sender].length, "Invalid stake ID");
+        require(positionId < userStakes[msg.sender].length, "Invalid position ID");
 
         _updateRewards(msg.sender, positionId);
 
