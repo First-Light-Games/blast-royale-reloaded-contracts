@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -181,7 +180,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         uint256 totalRewards = 0;
         StakingInfo memory stakingInfo = userStakingInfo[_user][_type][positionId];
         if (stakingInfo.amount > 0) {
-            uint256 _duration = stakingInfo.stakingTime + lockPeriod - block.timestamp > 0 ? block.timestamp - stakingInfo.stakingTime : lockPeriod;
+            uint256 _duration = stakingInfo.stakingTime + lockPeriod > block.timestamp ? block.timestamp - stakingInfo.stakingTime : lockPeriod;
             totalRewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, _duration);
         }
         return totalRewards;
@@ -240,7 +239,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
             keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, price))
         ) % 10000;
 
-        console.log('randomValue', randomValue);
         uint256 cumulativeChance = 0;
         AprRange[] memory ranges = aprRanges[rangeIndex];
 
@@ -250,7 +248,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
                 return ranges[i].apr;
             }
         }
-        return ranges[ranges.length - 1].apr; // Default to last APR in case of rounding errors
+        return ranges[0].apr;
     }
 
     // Helper function to get a random number in range
