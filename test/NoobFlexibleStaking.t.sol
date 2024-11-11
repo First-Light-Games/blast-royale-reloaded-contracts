@@ -216,6 +216,30 @@ contract NoobFlexibleStakingTest is Test {
         vm.stopPrank();
     }
 
+     function testCumulativeStakes() public {
+        vm.warp(1728319899);
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 1 days);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 100000000000000000, "Reward should be 100000000000000000 with a 36.5% apr");
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        uint256 amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 2 days);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 300000000000000000, "Reward should be 300000000000000000 with a 36.5% apr");
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+    }
+
     // Test staking function
     /*function testStakeTokens() public {
         vm.startPrank(owner);
