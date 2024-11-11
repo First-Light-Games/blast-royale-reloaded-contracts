@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -18,11 +19,11 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     /// <=============== STATE VARIABLES ===============>
     struct AprRange {
-        uint256 min;
-        uint256 max;
+        uint256 apr;
+        uint256 chance; // chance in basis points (e.g., 6499 for 64.99%)
     }
 
-    AprRange[] public aprRanges;
+    mapping(uint256 => AprRange[]) public aprRanges;
 
     uint256 private totalRewardsLimit;
     uint256 public totalRewards;
@@ -64,10 +65,24 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         luckyEnabled = true;
         fixedEnabled = true;
 
-        // Initialize default APR ranges
-        aprRanges.push(AprRange(200_000, 1_000_000));  // First 6 hours
-        aprRanges.push(AprRange(150_000, 750_000));   // Next 7 days
-        aprRanges.push(AprRange(100_000, 500_000));   // Next 3 weeks
+        // Initialize APR ranges and probabilities
+        aprRanges[0].push(AprRange(200_000, 6499)); // 64.99%
+        aprRanges[0].push(AprRange(300_000, 3400)); // 34%
+        aprRanges[0].push(AprRange(400_000, 90));    // 0.9%
+        aprRanges[0].push(AprRange(600_000, 10));    // 0.1%
+        aprRanges[0].push(AprRange(1000_000, 1));   // 0.01%
+
+        aprRanges[1].push(AprRange(150_000, 6499)); // 64.99%
+        aprRanges[1].push(AprRange(225_000, 3400)); // 34%
+        aprRanges[1].push(AprRange(300_000, 90));    // 0.9%
+        aprRanges[1].push(AprRange(450_000, 10));    // 0.1%
+        aprRanges[1].push(AprRange(750_000, 1));    // 0.01%
+
+        aprRanges[2].push(AprRange(100_000, 6499)); // 64.99%
+        aprRanges[2].push(AprRange(150_000, 3400)); // 34%
+        aprRanges[2].push(AprRange(200_000, 90));    // 0.9%
+        aprRanges[2].push(AprRange(300_000, 10));    // 0.1%
+        aprRanges[2].push(AprRange(500_000, 1));    // 0.01%
     }
 
     modifier whenLuckyModeEnabled() {
@@ -206,16 +221,36 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
         uint256 apr;
 
         if (timeSinceTGE < 48 hours) {
-            apr = randomInRange(aprRanges[0].min, aprRanges[0].max);
+            apr = getAPRWithChance(0);
         } else if (timeSinceTGE < 216 hours) { // Next week after 48 hours
-            apr = randomInRange(aprRanges[1].min, aprRanges[1].max);
+            apr = getAPRWithChance(1);
         } else if (timeSinceTGE < 720 hours) { // Next 3 weeks
-            apr = randomInRange(aprRanges[2].min, aprRanges[2].max);
+            apr = getAPRWithChance(2);
         } else {
             apr = 0; // Lucky staking closed
         }
 
         return apr;
+    }
+
+    // Helper function to get APR based on chance distribution
+    function getAPRWithChance(uint256 rangeIndex) internal view returns (uint256) {
+        (, int256 price, , , ) = priceFeed.latestRoundData();
+        uint256 randomValue = uint256(
+            keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, price))
+        ) % 10000;
+
+        console.log('randomValue', randomValue);
+        uint256 cumulativeChance = 0;
+        AprRange[] memory ranges = aprRanges[rangeIndex];
+
+        for (uint256 i = 0; i < ranges.length; i++) {
+            cumulativeChance += ranges[i].chance;
+            if (randomValue < cumulativeChance) {
+                return ranges[i].apr;
+            }
+        }
+        return ranges[ranges.length - 1].apr; // Default to last APR in case of rounding errors
     }
 
     // Helper function to get a random number in range
@@ -263,14 +298,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     /// @notice Enable/Disable fixed staking
     function toggleFixedStaking(bool _enabled) external onlyOwner {
         fixedEnabled = _enabled;
-    }
-
-    /// @notice Set APR ranges
-    function setAPRRange(uint256 _index, uint256 _min, uint256 _max) external onlyOwner {
-        require(_max > _min, "Max must be greater than min");
-        require(_index < aprRanges.length, "Invalid index");
-        aprRanges[_index].min = _min;
-        aprRanges[_index].max = _max;
     }
 
     /// @notice Function to withdraw tokens
