@@ -240,22 +240,6 @@ contract NoobFlexibleStakingTest is Test {
         vm.stopPrank();
     }
 
-    // Test staking function
-    /*function testStakeTokens() public {
-        vm.startPrank(owner);
-        token.mint(user, stakeAmount);
-        vm.stopPrank();
-
-        vm.startPrank(user); // Set the next call to be made by 'user'
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount); // Stake 100 NOOB
-        vm.stopPrank();
-
-        // Check the user's staking balance after staking
-        uint256 stakedAmount = stakingContract.getTotalStakedAmount(user);
-        assertEq(stakedAmount, stakeAmount, "Staked amount should match");
-    }
-
     // Test claiming rewards
     function testClaimRewards() public {
         vm.startPrank(user);
@@ -263,64 +247,16 @@ contract NoobFlexibleStakingTest is Test {
         stakingContract.stake(stakeAmount);
         uint256 rewards;
         vm.warp(block.timestamp + 90 days); // 3 months later...
-        rewards = stakingContract.getClaimableRewards(user);
+        rewards = stakingContract.getTotalClaimableRewards(user);
         console.log(rewards);
         vm.stopPrank();
 
         vm.startPrank(owner);
         stakingContract.updateApr(5_000);
         vm.warp(block.timestamp + 90 days + 30 days); // 4 months later...
-        rewards = stakingContract.getClaimableRewards(user);
+        rewards = stakingContract.getTotalClaimableRewards(user);
         console.log(rewards);
         vm.stopPrank();
-    }
-
-    // Test claiming rewards after updating APR
-    function testClaimRewardsAfterUpdatingApr() public {
-        vm.warp(1);
-        vm.startPrank(user);
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount);
-        uint256 rewards;
-        vm.warp(1 + 10 days); // 10 days later...
-        rewards = stakingContract.getClaimableRewards(user);
-        console.log(rewards);
-        vm.stopPrank();
-
-        vm.startPrank(owner);
-        stakingContract.updateApr(5_000); // Update APR to 5%
-        vm.warp(1 + 20 days); // 20 days later...
-        rewards = stakingContract.getClaimableRewards(user);
-        console.log(rewards);
-        vm.stopPrank();
-    }
-
-    // Test unstaking tokens
-    function testUnstakeTokens() public {
-        vm.startPrank(owner);
-        token.mint(address(stakingContract), 100000 ether); // mint $NOOB to staking contract for rewards
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount); // Stake 100 NOOB
-        vm.stopPrank();
-
-        // Fast forward 1 year to accumulate rewards
-        vm.warp(block.timestamp + 365 days);
-
-        // Unstake tokens
-        vm.startPrank(user);
-        stakingContract.unstake();
-        vm.stopPrank();
-
-        // Check user's balance after unstaking
-        uint256 userBalance = token.balanceOf(user);
-        assertGt(
-            userBalance,
-            1 ether,
-            "User balance should be greater after unstaking"
-        );
     }
 
     // Test updating APR by the owner
@@ -332,70 +268,6 @@ contract NoobFlexibleStakingTest is Test {
 
         uint256 currentApr = stakingContract.getCurrentApr();
         assertEq(currentApr, newApr, "APR should be updated to the new value");
-    }
-
-    *//*Let's say we have flexible staking, 10% per day.
-    I put 100 tokens in day 1.
-    Then i put 100 tokens on day 2.
-    Then i put 100 tokens on day 3.
-    What's expected to happen is:
-    On day 1 i'd get 10 tokens, so i have 110 tokens staked
-    On day 2 i get 21 tokens, so i have 231 tokens staked
-    On day 3 i get 33 tokens, so i get 364 tokens staked*//*
-
-    function testExampleScenario() public {
-        vm.warp(1728319899);
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 ether);
-        stakingContract.stake(100 ether);
-        vm.warp(1728319899 + 1 days);
-        assertEq(stakingContract.getClaimableRewards(user), 100000000000000000, "Reward should be 100000000000000000 with a 36.5% apr");
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        uint256 amount = stakingContract.getTotalStakedAmount(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 ether);
-        stakingContract.stake(100 ether);
-        vm.warp(1728319899 + 2 days);
-        assertEq(stakingContract.getClaimableRewards(user), 300000000000000000, "Reward should be 300000000000000000 with a 36.5% apr");
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        amount = stakingContract.getTotalStakedAmount(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 ether);
-        stakingContract.stake(100 ether);
-        vm.warp(1728319899 + 3 days);
-        assertEq(stakingContract.getClaimableRewards(user), 600000000000000000, "Reward should be 600000000000000000 with a 36.5% apr");
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        amount = stakingContract.getTotalStakedAmount(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 ether);
-        stakingContract.stake(100 ether);
-        vm.warp(1728319899 + 4 days);
-        assertEq(stakingContract.getClaimableRewards(user), 1000000000000000000, "Reward should be 1000000000000000000 with a 36.5% apr");
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        amount = stakingContract.getTotalStakedAmount(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
-        vm.startPrank(owner);
-        stakingContract.updateApr(15_000);
-        vm.stopPrank();
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 ether);
-        stakingContract.stake(100 ether);
-        vm.warp(1728319899 + 5 days);
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        amount = stakingContract.getTotalStakedAmount(user);
-        console.log("stakeAmount", amount);
-        assertEq(stakingContract.getClaimableRewards(user), 1205479452054794520, "Reward should be 1205479452054794520 with a 15% apr on day 5");
         vm.stopPrank();
     }
 
@@ -408,178 +280,73 @@ contract NoobFlexibleStakingTest is Test {
             abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user)
         );
         stakingContract.updateApr(newApr); // This should revert since the caller is not the owner
+        vm.stopPrank();
     }
 
-    // Test claiming and staking rewards (compound)
-    function testClaimAndStakeRewards() public {
+    /*Let's say we have flexible staking, 10% per day.
+    I put 100 tokens in day 1.
+    Then i put 100 tokens on day 2.
+    Then i put 100 tokens on day 3.
+    What's expected to happen is:
+    On day 1 i'd get 10 tokens, so i have 110 tokens staked
+    On day 2 i get 21 tokens, so i have 231 tokens staked
+    On day 3 i get 33 tokens, so i get 364 tokens staked*/
+
+    function testExampleScenario() public {
+        vm.warp(1728319899);
+
         vm.startPrank(user);
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount); // Stake 100 NOOB
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 1 days);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 100000000000000000, "Reward should be 100000000000000000 with a 36.5% apr");
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        uint256 amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
 
-        // Fast forward 1 year to accumulate rewards
-        vm.warp(block.timestamp + 365 days);
-
-        uint256 rewardsBefore = stakingContract.getClaimableRewards(user);
-        assertGt(rewardsBefore, 0, "Rewards should be greater than zero");
-
-        // Compound rewards by claiming and staking
         vm.startPrank(user);
-        stakingContract.claimAndStake();
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 2 days);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 300000000000000000, "Reward should be 300000000000000000 with a 36.5% apr");
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
 
-        uint256 stakedAmount = stakingContract.getTotalStakedAmount(user);
-        assertGt(
-            stakedAmount,
-            stakeAmount,
-            "Staked amount should increase after claiming and staking rewards"
-        );
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 3 days);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 600000000000000000, "Reward should be 600000000000000000 with a 36.5% apr");
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 4 days);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 1000000000000000000, "Reward should be 1000000000000000000 with a 36.5% apr");
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        stakingContract.updateApr(15_000);
+        vm.stopPrank();
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 100 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(1728319899 + 5 days);
+        console.log("rewards", stakingContract.getTotalClaimableRewards(user));
+        amount = stakingContract.getTotalStakedAmount(user);
+        console.log("stakeAmount", amount);
+        assertEq(stakingContract.getTotalClaimableRewards(user), 1205479452054794520, "Reward should be 1205479452054794520 with a 15% apr on day 5");
+        vm.stopPrank();
     }
-
-    // Test multi-claims with APR change in the middle
-    function testMultiClaimsWithAprUpdate() public {
-        vm.startPrank(owner);
-        token.mint(address(stakingContract), 1_000_000 * 1e18); // mint $NOOB to staking contract for rewards
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount);
-
-        // Move time forward by 30 days
-        vm.warp(block.timestamp + 30 days);
-
-        // Claim rewards for the first period
-        uint256 rewardsBeforeAprChange = stakingContract.getClaimableRewards(
-            user
-        );
-
-        // Assert rewards are correct before APR change
-        assertGt(
-            rewardsBeforeAprChange,
-            0,
-            "First claimable rewards should be greater than zero"
-        );
-
-        // Update APR by the owner
-        vm.startPrank(owner);
-        stakingContract.updateApr(5000); // Change APR to 5%
-        vm.stopPrank();
-
-        // Move time forward by another 30 days
-        vm.warp(block.timestamp + 30 days + 30 days);
-
-        // Claim rewards after APR change
-        vm.startPrank(user);
-        uint256 rewardsAfterAprChange = stakingContract.getClaimableRewards(
-            user
-        );
-        stakingContract.claimStakeRewards();
-
-        // Assert that rewards are calculated correctly after APR change
-        assertGt(
-            rewardsAfterAprChange,
-            0,
-            "Rewards after APR change should be greater than zero"
-        );
-
-        // Assert that rewards are lower after the APR update
-        assertGt(
-            rewardsAfterAprChange,
-            rewardsBeforeAprChange,
-            "Rewards after APR change should be greater than before"
-        );
-    }
-
-    // Test cumulative rewards vs only staked amount
-    function testCumulativeRewardsOrOnlyStakedAmount() public {
-        vm.startPrank(owner);
-        token.mint(address(stakingContract), 100000 * 1e18); // mint $NOOB to staking contract for rewards
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount);
-
-        // Move time forward by 30 days
-        vm.warp(block.timestamp + 30 days);
-
-        // Claim rewards
-        uint256 rewardsBeforeCompound = stakingContract.getClaimableRewards(
-            user
-        );
-        stakingContract.claimStakeRewards();
-
-        // Assert rewards are correct and then compound by staking them
-        assertGt(
-            rewardsBeforeCompound,
-            0,
-            "Claimable rewards should be greater than zero"
-        );
-
-        // Move time forward by 30 days
-        vm.warp(block.timestamp + 31 days);
-
-        uint256 totalStakedBeforeCompound = stakingContract.getTotalStakedAmount(
-            user
-        );
-        stakingContract.claimAndStake();
-
-        uint256 totalStakedAfterCompound = stakingContract.getTotalStakedAmount(
-            user
-        );
-        assertGt(
-            totalStakedAfterCompound,
-            totalStakedBeforeCompound,
-            "Staked amount should increase after compounding"
-        );
-
-        // Move time forward and ensure rewards are calculated based on the new staked amount (including previous rewards)
-        vm.warp(block.timestamp + 61 days);
-        uint256 rewardsAfterCompound = stakingContract.getClaimableRewards(
-            user
-        );
-
-        // Check if cumulative rewards are considered for future rewards calculation
-        assertGt(
-            rewardsAfterCompound,
-            rewardsBeforeCompound,
-            "Rewards after compounding should be greater than before"
-        );
-    }
-
-    // Test APR change mid-stake without claiming
-    function testAprUpdateMidStakeWithoutClaiming() public {
-        vm.startPrank(owner);
-        token.mint(address(stakingContract), 100000 * 1e18); // mint $NOOB to staking contract for rewards
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), stakeAmount);
-        stakingContract.stake(stakeAmount);
-
-        // Move time forward by 15 days, APR is still the same
-        vm.warp(block.timestamp + 15 days);
-        uint256 rewardsBeforeAprChange = stakingContract.getClaimableRewards(
-            user
-        );
-
-        // Update APR mid-stake
-        vm.startPrank(owner);
-        stakingContract.updateApr(20000); // Update APR to 20%
-        vm.stopPrank();
-
-        // Move time forward by another 15 days
-        vm.warp(block.timestamp + 30 days);
-        uint256 rewardsAfterAprChange = stakingContract.getClaimableRewards(
-            user
-        );
-
-        // Assert that rewards are higher after the APR update
-        assertGt(
-            rewardsAfterAprChange,
-            rewardsBeforeAprChange,
-            "Rewards should increase after APR update"
-        );
-    }*/
 
     function userStake(uint256 amount) public {
         vm.startPrank(user);
