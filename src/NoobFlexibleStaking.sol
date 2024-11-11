@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -11,10 +12,10 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     /// <=============== Events ===============>
-    event Staked(address indexed user, uint256 amount);
-    event Claimed(address indexed user, uint256 rewards);
-    event Unstaked(address indexed user, uint256 amount);
-    event AprUpdated(uint256 newApr);
+    event Staked(address indexed user, uint256 positionId, uint256 amount);
+    event Claimed(address indexed user, uint256 positionId, uint256 rewards);
+    event Unstaked(address indexed user, uint256 positionId, uint256 amount);
+    event AprUpdated(uint256 newApr, uint256 timestamp);
 
     /// <=============== STATE VARIABLES ===============>
     IERC20 public noobToken;
@@ -27,12 +28,12 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         uint256 lastApr; // Last APR used for reward calculation
     }
 
-    // Mapping to keep track of user stakes
-    mapping(address => Stake) public userStakes;
+    // Mapping to keep track of user's multiple staking positions
+    mapping(address => Stake[]) public userStakes;
 
     // Historical APR changes
     struct AprChange {
-        uint256 apr; // APR value with two decimals, e.g., 15% = 15000
+        uint256 apr; // APR value
         uint256 timestamp; // Time when this APR was set
     }
 
@@ -61,119 +62,151 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         // Transfer tokens to the contract
         noobToken.safeTransferFrom(msg.sender, address(this), _amount);
 
-        // Update rewards based on current APR before adding new amount
-        _updateRewards(msg.sender);
+        // Add a new stake for the user
+        Stake memory newStake = Stake({
+            amount: _amount,
+            lastUpdatedAt: block.timestamp,
+            rewards: 0,
+            lastApr: aprHistory[aprHistory.length - 1].apr
+        });
+        userStakes[msg.sender].push(newStake);
 
-        // Update user stake
-        userStakes[msg.sender].amount += _amount;
-        // userStakes[msg.sender].amount += (_amount + userStakes[msg.sender].rewards);
-        // userStakes[msg.sender].rewards = 0;
-
-        // Emit event
-        emit Staked(msg.sender, _amount);
+        uint256 positionId = userStakes[msg.sender].length - 1;
+        emit Staked(msg.sender, positionId, _amount);
     }
 
     /// @notice Function to claim staking rewards
-    function claimStakeRewards() external whenNotPaused nonReentrant {
-        _updateRewards(msg.sender);
+    function claimStakeRewards(uint256 positionId) external whenNotPaused nonReentrant {
+        require(positionId < userStakes[msg.sender].length, "Invalid position ID");
 
-        uint256 rewards = userStakes[msg.sender].rewards;
+        _updateRewards(msg.sender, positionId);
+
+        Stake storage userStake = userStakes[msg.sender][positionId];
+        uint256 rewards = userStake.rewards;
         require(rewards > 0, "No rewards available");
 
         // Reset rewards
-        userStakes[msg.sender].rewards = 0;
+        userStake.rewards = 0;
+        userStake.lastUpdatedAt = block.timestamp;
 
         // Transfer rewards to user
         noobToken.safeTransfer(msg.sender, rewards);
 
         // Emit event
-        emit Claimed(msg.sender, rewards);
+        emit Claimed(msg.sender, positionId, rewards);
     }
 
     /// @notice Function to claim and stake rewards (compound)
-    function claimAndStake() external whenNotPaused nonReentrant {
+    function claimAndStake(uint256 positionId) external whenNotPaused nonReentrant {
+        require(positionId < userStakes[msg.sender].length, "Invalid position ID");
+        Stake storage userStake = userStakes[msg.sender][positionId];
+
         require(
-            block.timestamp >= userStakes[msg.sender].lastUpdatedAt + COOLDOWN_PERIOD,
+            block.timestamp >= userStake.lastUpdatedAt + COOLDOWN_PERIOD,
             "Claim & Stake can only be done once in 24 hours"
         );
 
-        _updateRewards(msg.sender);
+        _updateRewards(msg.sender, positionId);
 
-        uint256 rewards = userStakes[msg.sender].rewards;
+        uint256 rewards = userStake.rewards;
         require(rewards > 0, "No rewards available");
 
-        // Reset rewards
-        userStakes[msg.sender].rewards = 0;
-        userStakes[msg.sender].lastUpdatedAt = block.timestamp;
+        // Reset rewards and update last updated time
+        userStake.rewards = 0;
+        userStake.lastUpdatedAt = block.timestamp;
 
         // Add rewards to stake
-        userStakes[msg.sender].amount += rewards;
+        userStake.amount += rewards;
 
         // Emit event
-        emit Staked(msg.sender, rewards);
+        emit Staked(msg.sender, positionId,rewards);
     }
 
     /// @notice Function to unstake all staked tokens and claim rewards
-    function unstake() external whenNotPaused nonReentrant {
-        _updateRewards(msg.sender);
+    function unstake(uint256 positionId) external whenNotPaused nonReentrant {
+        require(positionId < userStakes[msg.sender].length, "Invalid stake ID");
 
-        uint256 totalAmount = userStakes[msg.sender].amount + userStakes[msg.sender].rewards;
+        _updateRewards(msg.sender, positionId);
+
+        Stake storage userStake = userStakes[msg.sender][positionId];
+        uint256 totalAmount = userStake.amount + userStake.rewards;
 
         require(totalAmount > 0, "Nothing to unstake");
 
         // Reset user's stake
-        delete userStakes[msg.sender];
+        delete userStakes[msg.sender][positionId];
 
         // Transfer total amount back to user
         noobToken.safeTransfer(msg.sender, totalAmount);
 
         // Emit event
-        emit Unstaked(msg.sender, totalAmount);
+        emit Unstaked(msg.sender, positionId, totalAmount);
     }
 
     /// @notice Function to get current claimable Rewards
-    function getClaimableRewards(address _user) public view returns (uint256) {
+    function getClaimableRewards(address _user, uint256 _positionId) public view returns (uint256) {
         uint256 totalRewards = 0;
-        Stake memory _stake = userStakes[_user];
+        Stake memory _stake = userStakes[_user][_positionId];
         if (_stake.amount > 0) {
-            uint256 accumulatedRewards = 0;
             uint256 lastAprTimestamp = _stake.lastUpdatedAt;
 
-            for (uint256 i = 0; i < aprHistory.length; i++) {
-                uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
-                accumulatedRewards += _calculateRewards(_stake.amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
-                if (_stake.lastUpdatedAt < nextTimestamp) {
+            if (lastAprTimestamp >= aprHistory[aprHistory.length - 1].timestamp) {
+                totalRewards += _calculateRewards(_stake.amount, aprHistory[aprHistory.length - 1].apr, lastAprTimestamp, block.timestamp);
+            } else {
+                for (uint256 i = 0; i < aprHistory.length; i++) {
+                    uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
+                    totalRewards += _calculateRewards(_stake.amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
                     lastAprTimestamp = nextTimestamp;
                 }
             }
-            totalRewards += accumulatedRewards;
         }
         return totalRewards;
     }
 
+    /// @notice Function to get total claimable Rewards
+    function getTotalClaimableRewards(address _user) public view returns (uint256) {
+        uint256 totalRewards = 0;
+        for (uint256 i = 0; i < userStakes[_user].length; i++) {
+            totalRewards += getClaimableRewards(_user, i);
+        }
+        return totalRewards;
+    }
+
+    /// @notice Function to get total stakedAmount
+    function getTotalStakedAmount(address _user) public view returns (uint256) {
+        uint256 totalStakedAmount = 0;
+        for (uint256 i = 0; i < userStakes[_user].length; i++) {
+            totalStakedAmount += userStakes[_user][i].amount;
+        }
+        return totalStakedAmount;
+    }
+
+    /// @notice Function to get total staked count
+    function getStakedCount(address _user) public view returns (uint256) {
+        return userStakes[_user].length;
+    }
+
     /// @notice Function to calculate and update rewards for a user
-    function _updateRewards(address _user) internal {
-        Stake storage _stake = userStakes[_user];
+    function _updateRewards(address _user, uint256 _positionId) internal {
+        Stake storage _stake = userStakes[_user][_positionId];
         uint256 amount = _stake.amount;
 
         if (amount > 0) {
             uint256 accumulatedRewards = 0;
             uint256 lastAprTimestamp = _stake.lastUpdatedAt;
 
-            for (uint256 i = 0; i < aprHistory.length; i++) {
-                uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
-                accumulatedRewards += _calculateRewards(amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
-                if (_stake.lastUpdatedAt < nextTimestamp) {
+            if (lastAprTimestamp >= aprHistory[aprHistory.length - 1].timestamp) {
+                accumulatedRewards += _calculateRewards(_stake.amount, aprHistory[aprHistory.length - 1].apr, lastAprTimestamp, block.timestamp);
+            } else {
+                for (uint256 i = 0; i < aprHistory.length; i++) {
+                    uint256 nextTimestamp = (i < aprHistory.length - 1) ? aprHistory[i + 1].timestamp : block.timestamp;
+                    accumulatedRewards += _calculateRewards(amount, aprHistory[i].apr, lastAprTimestamp, nextTimestamp);
                     lastAprTimestamp = nextTimestamp;
                 }
             }
 
             _stake.rewards += accumulatedRewards;
         }
-
-        // Update last claimed time and APR
-        _stake.lastUpdatedAt = block.timestamp;
-        _stake.lastApr = getCurrentApr();
     }
 
     /// @notice Function to calculate rewards for a given period
@@ -200,7 +233,7 @@ contract NoobFlexibleStaking is Ownable, ReentrancyGuard, Pausable {
         aprHistory.push(AprChange({apr: _newApr, timestamp: block.timestamp}));
 
         // Emit event
-        emit AprUpdated(_newApr);
+        emit AprUpdated(_newApr, block.timestamp);
     }
 
     /// @notice Function to pause the contract (for emergency)

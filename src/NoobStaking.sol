@@ -225,47 +225,47 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     }
 
     /// <=============== Admin Functions ===============>
-    // Set APR for fixed staking
+    /// @notice Set APR for fixed staking
     function setFixedAPR(uint256 _apr) external onlyOwner {
         fixedAPR = _apr;
     }
 
-    // Set tgeStart time
+    /// @notice Set tgeStart time
     function setTgeStart(uint256 _tgeStart) external onlyOwner {
         require(tgeStart <= block.timestamp, "TGE already started");
         require(_tgeStart >= block.timestamp, "New TGE must be in the future");
         tgeStart = _tgeStart;
     }
 
-    // Set fixedStakingDuration
+    /// @notice Set fixedStakingDuration
     function setFixedStakingDuration(uint256 _duration) external onlyOwner {
         require(_duration > 0, "Duration must be greater than 0");
         fixedStakingDuration = _duration;
     }
 
-    // Set luckyStakingDuration
+    /// @notice Set luckyStakingDuration
     function setLuckyStakingDuration(uint256 _duration) external onlyOwner {
         require(_duration > 0, "Duration must be greater than 0");
         luckyStakingDuration = _duration;
     }
 
-    // Set luckyMaxStake
+    /// @notice Set luckyMaxStake
     function setLuckyMaxStake(uint256 _maxStake) external onlyOwner {
         require(_maxStake > 0, "Max stake must be greater than 0");
         luckyMaxStake = _maxStake;
     }
 
-    // Enable/Disable lucky staking
+    /// @notice Enable/Disable lucky staking
     function toggleLuckyStaking(bool _enabled) external onlyOwner {
         luckyEnabled = _enabled;
     }
 
-    // Enable/Disable fixed staking
+    /// @notice Enable/Disable fixed staking
     function toggleFixedStaking(bool _enabled) external onlyOwner {
         fixedEnabled = _enabled;
     }
 
-    // Set APR ranges
+    /// @notice Set APR ranges
     function setAPRRange(uint256 _index, uint256 _min, uint256 _max) external onlyOwner {
         require(_max > _min, "Max must be greater than min");
         require(_index < aprRanges.length, "Invalid index");
@@ -280,6 +280,16 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
             "Insufficient token balance"
         );
         noobToken.safeTransfer(owner(), amount);
+    }
+
+    /// @notice Function to pause the contract (for emergency)
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Function to unpause the contract
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /// <=============== Internal Helper Functions ===============>

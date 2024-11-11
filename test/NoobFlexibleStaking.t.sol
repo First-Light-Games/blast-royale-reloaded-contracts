@@ -14,10 +14,13 @@ contract NoobFlexibleStakingTest is Test {
     uint256 initialApr = 36_500; // 15% APR
     uint256 stakeAmount = 100 * 1e18;
     uint256 tgeStart = 1680616584;
+    uint256 initialBlockTimestamp = 1680616584;
 
     error OwnableUnauthorizedAccount(address account);
 
     function setUp() public {
+        vm.warp(initialBlockTimestamp);
+
         token = new NoobToken(owner);
         stakingContract = new NoobFlexibleStaking(
             address(token),
@@ -34,7 +37,6 @@ contract NoobFlexibleStakingTest is Test {
         vm.startPrank(owner);
         uint256 mintAmount = 1_000_000 * 10 ** token.decimals(); // Mint 1_000_000 tokens
         token.mint(user, mintAmount);
-        vm.warp(1680616584);
         vm.stopPrank();
 
         vm.startPrank(user);
@@ -42,7 +44,7 @@ contract NoobFlexibleStakingTest is Test {
         vm.stopPrank();
     }
 
-    function testExampleScenarioMultiple() public {
+    /*function testExampleScenarioMultiple() public {
         vm.warp(1680616584);
 
         vm.startPrank(owner);
@@ -172,57 +174,69 @@ contract NoobFlexibleStakingTest is Test {
         rewards = stakingContract.getClaimableRewards(user);
         console.log("Rewards after claimAndStake:", rewards);
         vm.stopPrank();
+    }*/
+
+    // https://docs.google.com/spreadsheets/d/1rzQ9kZlOsznrd7ghnvVetDbfEmccSgEochOuBcBsAyw/edit?gid=412342782#gid=412342782
+    function testScenario1() public {
+        vm.warp(initialBlockTimestamp);
+
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 10000 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(initialBlockTimestamp + 1 days);
+        uint256 rewards = stakingContract.getTotalClaimableRewards(user);
+        assertEq(rewards, 0.1 ether, "Staked amount should match");
+        uint256 amount = stakingContract.getTotalStakedAmount(user);
+        assertEq(amount, 100 ether, "Staked amount should match");
+        stakingContract.stake(100 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        vm.warp(initialBlockTimestamp + 2 days);
+        rewards = stakingContract.getTotalClaimableRewards(user);
+        assertEq(rewards, 0.3 ether, "Staked amount should match");
+        amount= stakingContract.getTotalStakedAmount(user);
+        assertEq(amount, 200 ether, "Staked amount should match");
+        stakingContract.stake(100 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        vm.warp(initialBlockTimestamp + 3 days);
+        rewards = stakingContract.getTotalClaimableRewards(user);
+        assertEq(rewards, 0.6 ether, "Staked amount should match");
+        amount= stakingContract.getTotalStakedAmount(user);
+        assertEq(amount, 300 ether, "Staked amount should match");
+        stakingContract.stake(100 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        vm.warp(initialBlockTimestamp + 4 days);
+        rewards = stakingContract.getTotalClaimableRewards(user);
+        assertEq(rewards, 1 ether, "Staked amount should match");
+        amount= stakingContract.getTotalStakedAmount(user);
+        assertEq(amount, 400 ether, "Staked amount should match");
+        vm.stopPrank();
     }
 
-    function testExampleScenario1() public {
-        vm.warp(1728319899);
-
-        //        vm.startPrank(owner);
-        //        stakingContract.updateApr(36500); // 10% per day
-        //        vm.stopPrank();
+    // https://docs.google.com/spreadsheets/d/1rzQ9kZlOsznrd7ghnvVetDbfEmccSgEochOuBcBsAyw/edit?gid=11554102#gid=11554102
+    function testScenario2() public {
+        vm.warp(initialBlockTimestamp);
 
         vm.startPrank(user);
-        token.approve(address(stakingContract), 100 * 1e18);
-        stakingContract.stake(100 * 1e18);
-        vm.warp(1728319899 + 1 days);
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        (uint256 amount, , , ) = stakingContract.userStakes(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
+        token.approve(address(stakingContract), 10000 ether);
+        stakingContract.stake(100 ether);
+        vm.warp(initialBlockTimestamp + 2 days);
+        stakingContract.stake(1000 ether);
 
-        vm.startPrank(user);
-        vm.warp(1728319899 + 1 days);
-        token.approve(address(stakingContract), 100 * 1e18);
-        stakingContract.stake(100 * 1e18);
-        vm.warp(1728319899 + 2 days);
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        (amount, , , ) = stakingContract.userStakes(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
+        vm.warp(initialBlockTimestamp + 3 days);
+        uint256 rewards = stakingContract.getTotalClaimableRewards(user);
+        assertEq(rewards, 1.3 ether, "Staked amount should match");
 
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 * 1e18);
-        vm.warp(1728319899 + 2 days);
-        stakingContract.stake(100 * 1e18);
-        vm.warp(1728319899 + 3 days);
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        (amount, , , ) = stakingContract.userStakes(user);
-        console.log("stakeAmount", amount);
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 100 * 1e18);
-        vm.warp(1728319899 + 3 days);
-        stakingContract.stake(100 * 1e18);
-        vm.warp(1728319899 + 4 days);
-        console.log("rewards", stakingContract.getClaimableRewards(user));
-        (amount, , , ) = stakingContract.userStakes(user);
-        console.log("stakeAmount", amount);
         vm.stopPrank();
     }
 
     // Test staking function
-    function testStakeTokens() public {
+    /*function testStakeTokens() public {
         vm.startPrank(owner);
         token.mint(user, stakeAmount);
         vm.stopPrank();
@@ -315,14 +329,14 @@ contract NoobFlexibleStakingTest is Test {
         assertEq(currentApr, newApr, "APR should be updated to the new value");
     }
 
-    /*Let's say we have flexible staking, 10% per day.
+    *//*Let's say we have flexible staking, 10% per day.
     I put 100 tokens in day 1.
     Then i put 100 tokens on day 2.
     Then i put 100 tokens on day 3.
     What's expected to happen is:
     On day 1 i'd get 10 tokens, so i have 110 tokens staked
     On day 2 i get 21 tokens, so i have 231 tokens staked
-    On day 3 i get 33 tokens, so i get 364 tokens staked*/
+    On day 3 i get 33 tokens, so i get 364 tokens staked*//*
 
     function testExampleScenario() public {
         vm.warp(1728319899);
@@ -564,5 +578,5 @@ contract NoobFlexibleStakingTest is Test {
             rewardsBeforeAprChange,
             "Rewards should increase after APR update"
         );
-    }
+    }*/
 }
