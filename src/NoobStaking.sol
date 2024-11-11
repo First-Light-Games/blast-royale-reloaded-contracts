@@ -341,6 +341,6 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
         totalRewards += rewards;
 
-        require(totalRewards < totalRewardsLimit, "Staking rewards limit reached");
+        require(totalRewards <= totalRewardsLimit, "Staking rewards limit reached");
     }
 }

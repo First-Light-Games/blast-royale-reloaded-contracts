@@ -15,7 +15,7 @@ contract NoobStakingTest is Test {
     uint256 initialApr = 36500; // 10% APR daily equivalent for testing
     uint256 stakeAmount = 100 ether;
     uint256 initialBlockTimestamp = 1728461199;
-    uint256 rewardLimit = 40 * 1_000_000 ether;
+    uint256 rewardLimit = 17820000 ether;
 
     error OwnableUnauthorizedAccount(address account);
 
@@ -67,7 +67,7 @@ contract NoobStakingTest is Test {
     }
 
     // Test early withdraw for fixed staking
-    function testEarlyWithdraw() public {
+    function testEarlyWithdrawForFixed() public {
         vm.warp(initialBlockTimestamp);
         userStake(stakeAmount, NoobStaking.StakeType.Fixed);
 
@@ -92,65 +92,27 @@ contract NoobStakingTest is Test {
     }
 
     // Test claiming rewards multiple times to ensure rewards are cumulative
-    /*function testClaimRewardsMultipleWithAssertions() public {
-        vm.startPrank(user);
+    function testFixedWithdraw() public {
         vm.warp(initialBlockTimestamp);
+        userStake(stakeAmount, NoobStaking.StakeType.Fixed);
 
         uint256 initialBalance = token.balanceOf(user);
 
-        // Stake tokens
-        stakingContract.stakeFixed(stakeAmount);
-
         // Warp time to simulate 15 days
-        vm.warp(initialBlockTimestamp + 15 days);
-        uint256 rewards1 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
-        assertApproxEqRel(rewards1, (stakeAmount * 80_000 * 15 days) / 365 days / 1_000 / 100, 1e12, "Rewards after 15 days should be correct");
-
-        // Warp time to simulate 180 days
         vm.warp(initialBlockTimestamp + 180 days);
-        uint256 rewards2 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
-        assertApproxEqRel(rewards2, (stakeAmount * 80_000 * 180 days) / 365 days / 1_000 / 100, 1e12, "Rewards after additional 180 days should be correct");
 
         // Claim second set of rewards
-        stakingContract.withdrawFixed(0);
-        uint256 balanceAfterClaim = token.balanceOf(user);
-        assertEq(balanceAfterClaim, initialBalance + rewards2, "Balance after second claim should match");
-
-        vm.stopPrank();
-    }
-
-    // Test cumulative rewards calculation
-    function testCumulativeRewards() public {
         vm.startPrank(user);
-        vm.warp(initialBlockTimestamp);
-
-        // Stake tokens
-        stakingContract.stakeFixed(stakeAmount);
-
-        // Warp time to simulate half of the fixed lock period
-        vm.warp(initialBlockTimestamp + 90 days);
-
-        uint256 claimableRewards1 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
-        uint256 expectedRewards1 = (stakeAmount * 80_000 * 90 days) / 365 days / 1_000 / 100;
-        assertApproxEqRel(claimableRewards1, expectedRewards1, 1e12, "Rewards after 90 days should be correct");
-
-        // Warp time to simulate the full lock period (180 days total)
-        vm.warp(initialBlockTimestamp + 180 days);
-
-        uint256 claimableRewards2 = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Fixed, 0);
-        uint256 expectedRewards2 = (stakeAmount * 80_000 * 180 days) / 365 days / 1_000 / 100;
-        assertApproxEqRel(claimableRewards2, expectedRewards2, 1e12, "Rewards after 180 days should be correct");
-
+        stakingContract.withdrawFixed(0);
+        uint256 balanceAfterWithdraw = token.balanceOf(user);
+        assertEq(balanceAfterWithdraw, initialBalance + stakeAmount + 18 ether, "Balance after second claim should match");
         vm.stopPrank();
     }
 
     // Test lucky staking functionality early withdraw
     function testLuckyStakeAndRewards() public {
-        vm.startPrank(user);
         vm.warp(initialBlockTimestamp);
-
-        // Stake tokens in lucky staking
-        stakingContract.stakeLucky(stakeAmount);
+        userStake(stakeAmount, NoobStaking.StakeType.Lucky);
 
         // Check the staking data
         (uint256 stakedAmount, ,uint256 apr) = stakingContract.userStakingInfo(user, NoobStaking.StakeType.Lucky, 0);
@@ -158,17 +120,21 @@ contract NoobStakingTest is Test {
         assertGt(apr, 0, "APR should be set based on random selection");
 
         // Warp time to simulate 10 days of staking
-        vm.warp(initialBlockTimestamp + 10 days);
+        vm.warp(initialBlockTimestamp + 100 days);
+        uint256 calculatedRewards = stakeAmount * 100 days * apr / 365 days / 100 / 1000;
         uint256 rewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Lucky, 0);
-        assertGt(rewards, 0, "Rewards should be calculated correctly for lucky staking");
+        assertApproxEqAbs(rewards, calculatedRewards, 100, "Rewards should be calculated correctly for lucky staking");
 
         // Withdraw and claim the rewards
         vm.warp(initialBlockTimestamp + 180 days);
+        vm.startPrank(user);
         uint256 balanceBeforeWithdraw = token.balanceOf(user);
+        rewards = stakingContract.getClaimableRewards(user, NoobStaking.StakeType.Lucky, 0);
         stakingContract.withdrawLucky(0);
         uint256 balanceAfterWithdraw = token.balanceOf(user);
+        assertEq(balanceAfterWithdraw, balanceBeforeWithdraw + stakeAmount + rewards, "Balance after withdraw should match");
         vm.stopPrank();
-    }*/
+    }
 
     // Test toggling staking availability
     function testToggleStaking() public {
@@ -202,32 +168,28 @@ contract NoobStakingTest is Test {
     }
 
     // Test reaching total rewards limit
-    /*function testTotalRewardsLimit() public {
+    function testTotalRewardsLimit() public {
         vm.warp(initialBlockTimestamp);
 
-        // Mint tokens and approve staking contract
-        vm.startPrank(owner);
-        uint256 mintAmount = 105_000_000 ether;
-        token.mint(user, mintAmount); // Mint tokens for the user
-        token.mint(address(stakingContract), 40 * 1_000_000 ether); // Mint tokens for staking rewards
-        vm.stopPrank();
+        mintTokens(user, 105_000_000 ether);
 
-        vm.startPrank(user);
-        token.approve(address(stakingContract), 105_000_000 ether); // Approve the staking contract
         // Stake multiple times to reach near the rewards limit
         for (uint256 i = 0; i < 33; i++) {
-            stakingContract.stakeFixed(3_000_000 ether);
+            userStake(3_000_000 ether, NoobStaking.StakeType.Fixed);
         }
 
+        uint256 calculatedRewardsLimit = 3_000_000 ether * 180 days * initialApr / 365 days / 100 / 1000 * 33;
         // Check that the total rewards approach the limit
         uint256 totalRewards = stakingContract.totalRewards();
-        assertLt(totalRewards, rewardLimit, "Total rewards should be below the limit");
+        assertEq(totalRewards, rewardLimit, "Total rewards should be below the limit");
 
         // Additional staking should revert once the limit is reached
+        vm.startPrank(user);
+        token.approve(address(stakingContract), 3_000_000 ether);
         vm.expectRevert("Staking rewards limit reached");
         stakingContract.stakeFixed(3_000_000 ether);
         vm.stopPrank();
-    }*/
+    }
 
     function userStake(uint256 _amount, NoobStaking.StakeType _type) public {
         vm.startPrank(user);
