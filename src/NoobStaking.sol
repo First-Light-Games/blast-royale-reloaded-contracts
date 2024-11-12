@@ -177,22 +177,22 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
 
     /// @notice Function to get current claimable Rewards
     function getClaimableRewards(address _user, StakeType _type, uint256 positionId) public view returns (uint256) {
-        uint256 totalRewards = 0;
+        uint256 rewards = 0;
         StakingInfo memory stakingInfo = userStakingInfo[_user][_type][positionId];
         if (stakingInfo.amount > 0) {
             uint256 _duration = stakingInfo.stakingTime + lockPeriod > block.timestamp ? block.timestamp - stakingInfo.stakingTime : lockPeriod;
-            totalRewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, _duration);
+            rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, _duration);
         }
-        return totalRewards;
+        return rewards;
     }
 
     /// @notice Function to get total claimable Rewards
     function getTotalClaimableRewards(address _user, StakeType _type) public view returns (uint256) {
-        uint256 totalRewards = 0;
+        uint256 rewards = 0;
         for (uint256 i = 0; i < userStakingInfo[_user][_type].length; i++) {
-            totalRewards += getClaimableRewards(_user, _type, i);
+            rewards += getClaimableRewards(_user, _type, i);
         }
-        return totalRewards;
+        return rewards;
     }
 
     /// @notice Function to get total stakedAmount
@@ -335,7 +335,7 @@ contract NoobStaking is Ownable, ReentrancyGuard, Pausable {
     }
 
     function _checkSafetyNet(address _staker, StakeType _stakeType, uint256 _index) internal {
-        StakingInfo memory stakingInfo = userStakingInfo[msg.sender][_stakeType][_index];
+        StakingInfo memory stakingInfo = userStakingInfo[_staker][_stakeType][_index];
 
         uint256 rewards = calculateRewards(stakingInfo.amount, stakingInfo.apr, lockPeriod);
 
