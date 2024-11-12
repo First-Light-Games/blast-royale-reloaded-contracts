@@ -74,6 +74,6 @@ $ cast --help
 ```
 
 ### Deployment (on Sepolia)
-FixedStaking: https://sepolia.etherscan.io/address/0x209765cd7c6bacd9b4f661dc2127d4a567bbfd2b#readContract
-FlexibleStaking: https://sepolia.etherscan.io/address/0x8f824d2f8f8c3382577ebb705282bb70186c49e4#code
+FixedStaking: https://sepolia.etherscan.io/address/0x6d91349c7698f0bf837edb396ba6463cca1f50c1
+FlexibleStaking: https://sepolia.etherscan.io/address/0xbac09b3fec8f9bfa40f41cd6f555c6948a4d61d7
 Noob: https://sepolia.etherscan.io/address/0x7866fbb00a197d5abab0ab666f045c2caa879ffc
