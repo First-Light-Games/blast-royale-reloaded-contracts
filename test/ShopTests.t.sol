@@ -59,6 +59,29 @@ contract ShopTests is Test {
         assertEq(uint256(0), purchased);
     }
 
+
+    function testLowerMinPurchase() public {
+      
+        noobToken.mint(account, 1);
+        noobToken.approve(address(shopContract), 1);
+        vm.expectRevert();
+        shopContract.IntentPurchase(15, 0x000000000000000000000000000000000000000000000000000000000000f000, 1);
+
+        uint256 purchased = shopContract.purchases(account);
+        assertEq(uint256(0), purchased);
+    }
+
+    function testAllowingMinPurchase() public {
+      
+        noobToken.mint(account, 1);
+        noobToken.approve(address(shopContract), 1);
+        shopContract.setMinPurchase(0);
+        shopContract.IntentPurchase(15, 0x000000000000000000000000000000000000000000000000000000000000f000, 1);
+
+        uint256 purchased = shopContract.purchases(account);
+        assertEq(uint256(1), purchased);
+    }
+
     function testWithoutNoobFunds() public {
 
         noobToken.approve(address(shopContract), 30);
